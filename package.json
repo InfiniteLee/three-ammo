@@ -1,0 +1,35 @@
+{
+  "name": "three-ammo",
+  "version": "0.1.0",
+  "description": "",
+  "homepage": "https://github.com/infinitelee/three-to-ammo",
+  "main": "index.js",
+  "author": "Kevin Lee <kevin@infinite-lee.com>",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/infinitelee/three-ammo/issues"
+  },
+  "repository": "infinitelee/three-ammo",
+  "scripts": {
+    "dev": "parcel --port 9999 index.html",
+    "dist": "parcel build index.js"
+  },
+  "dependencies": {
+    "ammo-debug-drawer": "github:infinitelee/ammo-debug-drawer",
+    "three-to-ammo": "github:infinitelee/three-to-ammo"
+  },
+  "peerDependencies": {
+    "ammo.js": "*",
+    "three": "*"
+  },
+  "devDependencies": {
+    "parcel": "^1.12.3"
+  },
+  "keywords": [
+    "ammo",
+    "ammo.js",
+    "physics",
+    "three",
+    "three.js"
+  ]
+}
