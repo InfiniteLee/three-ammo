@@ -2,6 +2,8 @@
 
 const EPS = 10e-6;
 
+const CONSTANTS = require("./constants");
+
 /* @param {object} worldConfig */
 function World(worldConfig) {
   this.collisionConfiguration = null;
@@ -32,17 +34,16 @@ function World(worldConfig) {
     this.collisionConfiguration
   );
   this.physicsWorld.setForceUpdateAllAabbs(false);
-  this.physicsWorld.setGravity(
-    new Ammo.btVector3(0, worldConfig.hasOwnProperty("gravity") ? worldConfig.gravity : -9.8, 0)
-  );
+  const gravity = new Ammo.btVector3(0, CONSTANTS.GRAVITY, 0);
+  if (worldConfig.hasOwnProperty("gravity")) {
+    gravity.setValue(worldConfig.gravity.x, worldConfig.gravity.y, worldConfig.gravity.z);
+  }
+  this.physicsWorld.setGravity(gravity);
+  Ammo.destroy(gravity);
   this.physicsWorld.getSolverInfo().set_m_numIterations(worldConfig.solverIterations || 10);
 }
 
 module.exports = World;
-
-World.prototype.getPhysicsWorld = function() {
-  return this.physicsWorld;
-};
 
 World.prototype.isDebugEnabled = function() {
   return this.debugDrawMode !== THREE.AmmoDebugConstants.NoDebug;

@@ -49,9 +49,10 @@ function almostEqualsQuaternion(epsilon, u, v) {
 function Body(bodyConfig, object3D, world) {
   this.loadedEvent = bodyConfig.loadedEvent ? bodyConfig.loadedEvent : "";
   this.mass = bodyConfig.hasOwnProperty("mass") ? bodyConfig.mass : 1;
-  this.gravity = new THREE.Vector3(0, CONSTANTS.GRAVITY, 0);
+  const worldGravity = world.physicsWorld.getGravity();
+  this.gravity = new Ammo.btVector3(worldGravity.x(), worldGravity.y(), worldGravity.z());
   if (bodyConfig.gravity) {
-    this.gravity.copy(bodyConfig.gravity);
+    this.gravity.setValue(bodyConfig.gravity.x, bodyConfig.gravity.y, bodyConfig.gravity.z);
   }
   this.linearDamping = bodyConfig.hasOwnProperty("linearDamping") ? bodyConfig.linearDamping : 0.01;
   this.angularDamping = bodyConfig.hasOwnProperty("angularDamping") ? bodyConfig.angularDamping : 0.01;
@@ -132,12 +133,10 @@ Body.prototype._initBody = (function() {
     this.body.setAngularFactor(angularFactor);
     Ammo.destroy(angularFactor);
 
-    const gravity = new Ammo.btVector3(this.gravity.x, this.gravity.y, this.gravity.z);
-    if (!almostEqualsBtVector3(0.001, gravity, this.world.getPhysicsWorld().getGravity())) {
-      this.body.setGravity(gravity);
+    if (!almostEqualsBtVector3(0.001, this.gravity, this.world.physicsWorld.getGravity())) {
+      this.body.setGravity(this.gravity);
       this.body.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
     }
-    Ammo.destroy(gravity);
 
     this.updateCollisionFlags();
 
@@ -219,9 +218,9 @@ Body.prototype.update = function(bodyConfig) {
     const broadphaseProxy = this.body.getBroadphaseProxy();
     broadphaseProxy.set_m_collisionFilterGroup(this.collisionFilterGroup);
     broadphaseProxy.set_m_collisionFilterMask(this.collisionFilterMask);
-    this.system.driver.broadphase
+    this.world.roadphase
       .getOverlappingPairCache()
-      .removeOverlappingPairsContainingProxy(broadphaseProxy, this.system.driver.dispatcher);
+      .removeOverlappingPairsContainingProxy(broadphaseProxy, this.world.dispatcher);
   }
 
   if (
@@ -233,16 +232,16 @@ Body.prototype.update = function(bodyConfig) {
     this.body.setDamping(this.linearDamping, this.angularDamping);
   }
 
-  if (bodyConfig.gravity && !almostEqualsVector3(0.001, bodyConfig.gravity, this.gravity)) {
-    this.gravity.copy(bodyConfig.gravity);
-    const gravity = new Ammo.btVector3(this.gravity.x, this.gravity.y, this.gravity.z);
-    if (!almostEqualsBtVector3(0.001, gravity, this.system.driver.physicsWorld.getGravity())) {
-      this.body.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
-    } else {
-      this.body.setFlags(RIGID_BODY_FLAGS.NONE);
+  if (bodyConfig.gravity) {
+    this.gravity.setValue(bodyConfig.gravity.x, bodyConfig.gravity.y, bodyConfig.gravity.z);
+    if (!almostEqualsBtVector3(0.001, this.gravity, this.body.getGravity())) {
+      if (!almostEqualsBtVector3(0.001, this.gravity, this.world.physicsWorld.getGravity())) {
+        this.body.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
+      } else {
+        this.body.setFlags(RIGID_BODY_FLAGS.NONE);
+      }
+      this.body.setGravity(this.gravity);
     }
-    this.body.setGravity(gravity);
-    Ammo.destroy(gravity);
   }
 
   if (
@@ -280,6 +279,7 @@ Body.prototype.remove = function() {
   Ammo.destroy(this.motionState);
   Ammo.destroy(this.localInertia);
   Ammo.destroy(this.rotation);
+  Ammo.destroy(this.gravity);
 };
 
 /**
@@ -291,6 +291,8 @@ Body.prototype.syncToPhysics = (function() {
   const q2 = new THREE.Vector3();
   const v2 = new THREE.Vector3();
   return function() {
+    if (this.type === TYPE.DYNAMIC) return;
+
     const body = this.body;
 
     if (!body) return;
@@ -330,6 +332,8 @@ Body.prototype.syncFromPhysics = (function() {
     q1 = new THREE.Quaternion(),
     q2 = new THREE.Quaternion();
   return function() {
+    if (this.type !== TYPE.DYNAMIC) return;
+
     this.motionState.getWorldTransform(this.msTransform);
     const position = this.msTransform.getOrigin();
     const quaternion = this.msTransform.getRotation();
