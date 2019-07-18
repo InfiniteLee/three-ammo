@@ -67,7 +67,7 @@ function Body(bodyConfig, object3D, world) {
     this.angularFactor.copy(bodyConfig.angularFactor);
   }
   this.activationState =
-    bodyConfig.activationState && ACTIVATION_STATES.hasOwnProperty(bodyConfig.activationState)
+    bodyConfig.activationState && ACTIVATION_STATES.indexOf(bodyConfig.activationState) !== -1
       ? bodyConfig.activationState
       : ACTIVATION_STATE.ACTIVE_TAG;
   this.type = bodyConfig.type ? bodyConfig.type : TYPE.DYNAMIC;
@@ -83,8 +83,6 @@ function Body(bodyConfig, object3D, world) {
 
   this._initBody();
 }
-
-module.exports = Body;
 
 /**
  * Parses an element's geometry and component metadata to create an Ammo body instance for the component.
@@ -123,27 +121,27 @@ Body.prototype._initBody = (function() {
       this.compoundShape,
       this.localInertia
     );
-    this.body = new Ammo.btRigidBody(this.rbInfo);
-    this.body.setActivationState(ACTIVATION_STATES.indexOf(this.activationState) + 1);
-    this.body.setSleepingThresholds(this.linearSleepingThreshold, this.angularSleepingThreshold);
+    this.physicsBody = new Ammo.btRigidBody(this.rbInfo);
+    this.physicsBody.setActivationState(ACTIVATION_STATES.indexOf(this.activationState) + 1);
+    this.physicsBody.setSleepingThresholds(this.linearSleepingThreshold, this.angularSleepingThreshold);
 
-    this.body.setDamping(this.linearDamping, this.angularDamping);
+    this.physicsBody.setDamping(this.linearDamping, this.angularDamping);
 
     const angularFactor = new Ammo.btVector3(this.angularFactor.x, this.angularFactor.y, this.angularFactor.z);
-    this.body.setAngularFactor(angularFactor);
+    this.physicsBody.setAngularFactor(angularFactor);
     Ammo.destroy(angularFactor);
 
     if (!almostEqualsBtVector3(0.001, this.gravity, this.world.physicsWorld.getGravity())) {
-      this.body.setGravity(this.gravity);
-      this.body.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
+      this.physicsBody.setGravity(this.gravity);
+      this.physicsBody.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
     }
 
     this.updateCollisionFlags();
 
-    this.world.addBody(this.body, this.collisionFilterGroup, this.collisionFilterMask);
+    this.world.addBody(this.physicsBody, this.collisionFilterGroup, this.collisionFilterMask);
 
     if (this.emitCollisionEvents) {
-      this.world.addEventListener(this.body);
+      this.world.addEventListener(this.physicsBody);
     }
   };
 })();
@@ -172,7 +170,7 @@ Body.prototype.updateShapes = (function() {
         this.updateMass();
       }
 
-      this.world.updateBody(this.body);
+      this.world.updateBody(this.physicsBody);
     }
 
     //call initializePolyhedralFeatures for hull shapes if debug is turned on and/or scale changes
@@ -203,9 +201,9 @@ Body.prototype.update = function(bodyConfig) {
 
   if (bodyConfig.activationState && bodyConfig.activationState !== this.activationState) {
     this.activationState = bodyConfig.activationState;
-    this.body.forceActivationState(ACTIVATION_STATES.indexOf(this.activationState) + 1);
+    this.physicsBody.forceActivationState(ACTIVATION_STATES.indexOf(this.activationState) + 1);
     if (this.activationState === ACTIVATION_STATE.ACTIVE_TAG) {
-      this.body.activate(true);
+      this.physicsBody.activate(true);
     }
   }
 
@@ -215,7 +213,7 @@ Body.prototype.update = function(bodyConfig) {
   ) {
     if (bodyConfig.collisionFilterGroup) this.collisionFilterGroup = bodyConfig.collisionFilterGroup;
     if (bodyConfig.collisionFilterMask) this.collisionFilterMask = bodyConfig.collisionFilterMask;
-    const broadphaseProxy = this.body.getBroadphaseProxy();
+    const broadphaseProxy = this.physicsBody.getBroadphaseProxy();
     broadphaseProxy.set_m_collisionFilterGroup(this.collisionFilterGroup);
     broadphaseProxy.set_m_collisionFilterMask(this.collisionFilterMask);
     this.world.roadphase
@@ -229,18 +227,18 @@ Body.prototype.update = function(bodyConfig) {
   ) {
     if (bodyConfig.linearDamping) this.linearDamping = bodyConfig.linearDamping;
     if (bodyConfig.angularDamping) this.angularDamping = bodyConfig.angularDamping;
-    this.body.setDamping(this.linearDamping, this.angularDamping);
+    this.physicsBody.setDamping(this.linearDamping, this.angularDamping);
   }
 
   if (bodyConfig.gravity) {
     this.gravity.setValue(bodyConfig.gravity.x, bodyConfig.gravity.y, bodyConfig.gravity.z);
-    if (!almostEqualsBtVector3(0.001, this.gravity, this.body.getGravity())) {
+    if (!almostEqualsBtVector3(0.001, this.gravity, this.physicsBody.getGravity())) {
       if (!almostEqualsBtVector3(0.001, this.gravity, this.world.physicsWorld.getGravity())) {
-        this.body.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
+        this.physicsBody.setFlags(RIGID_BODY_FLAGS.DISABLE_WORLD_GRAVITY);
       } else {
-        this.body.setFlags(RIGID_BODY_FLAGS.NONE);
+        this.physicsBody.setFlags(RIGID_BODY_FLAGS.NONE);
       }
-      this.body.setGravity(this.gravity);
+      this.physicsBody.setGravity(this.gravity);
     }
   }
 
@@ -250,13 +248,13 @@ Body.prototype.update = function(bodyConfig) {
   ) {
     if (bodyConfig.linearSleepingThreshold) this.linearSleepingThreshold = bodyConfig.linearSleepingThreshold;
     if (bodyConfig.angularSleepingThreshold) this.angularSleepingThreshold = bodyConfig.angularSleepingThreshold;
-    this.body.setSleepingThresholds(this.linearSleepingThreshold, this.angularSleepingThreshold);
+    this.physicsBody.setSleepingThresholds(this.linearSleepingThreshold, this.angularSleepingThreshold);
   }
 
   if (bodyConfig.angularFactor && !almostEqualsVector3(0.001, bodyConfig.angularFactor, this.angularFactor)) {
     this.angularFactor.copy(bodyConfig.angularFactor);
     const angularFactor = new Ammo.btVector3(this.angularFactor.x, this.angularFactor.y, this.angularFactor.z);
-    this.body.setAngularFactor(angularFactor);
+    this.physicsBody.setAngularFactor(angularFactor);
     Ammo.destroy(angularFactor);
   }
 
@@ -266,13 +264,13 @@ Body.prototype.update = function(bodyConfig) {
 /**
  * Removes the component and all physics and scene side effects.
  */
-Body.prototype.remove = function() {
+Body.prototype.destroy = function() {
   if (this.triMesh) Ammo.destroy(this.triMesh);
   if (this.localScaling) Ammo.destroy(this.localScaling);
   if (this.compoundShape) Ammo.destroy(this.compoundShape);
-  if (this.body) {
-    Ammo.destroy(this.body);
-    delete this.body;
+  if (this.physicsBody) {
+    Ammo.destroy(this.physicsBody);
+    delete this.physicsBody;
   }
   Ammo.destroy(this.rbInfo);
   Ammo.destroy(this.msTransform);
@@ -293,7 +291,7 @@ Body.prototype.syncToPhysics = (function() {
   return function() {
     if (this.type === TYPE.DYNAMIC) return;
 
-    const body = this.body;
+    const body = this.physicsBody;
 
     if (!body) return;
 
@@ -309,8 +307,8 @@ Body.prototype.syncToPhysics = (function() {
     q2.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
 
     if (!almostEqualsVector3(0.001, v, v2) || !almostEqualsQuaternion(0.001, q, q2)) {
-      if (!this.body.isActive()) {
-        this.body.activate(true);
+      if (!this.physicsBody.isActive()) {
+        this.physicsBody.activate(true);
       }
       this.msTransform.getOrigin().setValue(v.x, v.y, v.z);
       this.rotation.setValue(q.x, q.y, q.z, q.w);
@@ -318,7 +316,7 @@ Body.prototype.syncToPhysics = (function() {
       this.motionState.setWorldTransform(this.msTransform);
 
       if (this.type === TYPE.STATIC) {
-        this.body.setCenterOfMassTransform(this.msTransform);
+        this.physicsBody.setCenterOfMassTransform(this.msTransform);
       }
     }
   };
@@ -338,7 +336,7 @@ Body.prototype.syncFromPhysics = (function() {
     const position = this.msTransform.getOrigin();
     const quaternion = this.msTransform.getRotation();
 
-    const body = this.body;
+    const body = this.physicsBody;
 
     if (!body) return;
 
@@ -367,7 +365,7 @@ Body.prototype.addShape = function(collisionShape) {
 
 Body.prototype.removeShape = function(collisionShape) {
   const index = this.shapes.indexOf(collisionShape);
-  if (this.compoundShape && index !== -1 && this.body) {
+  if (this.compoundShape && index !== -1 && this.physicsBody) {
     this.compoundShape.removeChildShape(shapes[i]);
     this.shapesChanged = true;
     this.shapes.splice(index, 1);
@@ -376,11 +374,11 @@ Body.prototype.removeShape = function(collisionShape) {
 };
 
 Body.prototype.updateMass = function() {
-  const shape = this.body.getCollisionShape();
+  const shape = this.physicsBody.getCollisionShape();
   const mass = this.type === TYPE.DYNAMIC ? this.mass : 0;
   shape.calculateLocalInertia(mass, this.localInertia);
-  this.body.setMassProps(mass, this.localInertia);
-  this.body.updateInertiaTensor();
+  this.physicsBody.setMassProps(mass, this.localInertia);
+  this.physicsBody.updateInertiaTensor();
 };
 
 Body.prototype.updateCollisionFlags = function() {
@@ -393,20 +391,22 @@ Body.prototype.updateCollisionFlags = function() {
       flags |= COLLISION_FLAG.KINEMATIC_OBJECT;
       break;
     default:
-      this.body.applyGravity();
+      this.physicsBody.applyGravity();
       break;
   }
-  this.body.setCollisionFlags(flags);
+  this.physicsBody.setCollisionFlags(flags);
 
   this.updateMass();
 
   // TODO: enable CCD if dynamic?
-  // this.body.setCcdMotionThreshold(0.001);
-  // this.body.setCcdSweptSphereRadius(0.001);
+  // this.physicsBody.setCcdMotionThreshold(0.001);
+  // this.physicsBody.setCcdSweptSphereRadius(0.001);
 
-  this.world.updateBody(this.body);
+  this.world.updateBody(this.physicsBody);
 };
 
 Body.prototype.getVelocity = function() {
-  return this.body.getLinearVelocity();
+  return this.physicsBody.getLinearVelocity();
 };
+
+module.exports = Body;

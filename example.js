@@ -1,6 +1,6 @@
-import { World, Body } from "./index.js";
+import { World, Body, Constraint } from "./index.js";
 import { createBoxShape, createSphereShape } from "three-to-ammo";
-import { TYPE } from "./src/constants.js";
+import { TYPE, CONSTRAINT, ACTIVATION_STATE } from "./src/constants.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -24,6 +24,12 @@ const ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
 ballMesh.position.set(0, 2, 0);
 scene.add(ballMesh);
 
+const boxGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+boxMesh.position.set(-1, 2, 0);
+scene.add(boxMesh);
+
 Ammo().then(result => {
   Ammo = result;
   const world = new World({ debugDrawMode: THREE.AmmoDebugConstants.DrawWireframe });
@@ -38,17 +44,28 @@ Ammo().then(result => {
   ballBody.addShape(ballShape);
   bodies.push(ballBody);
 
+  const boxBody = new Body(
+    { type: TYPE.DYNAMIC, gravity: { x: 0, y: 0, z: 0 }, activationState: ACTIVATION_STATE.DISABLE_DEACTIVATION },
+    boxMesh,
+    world
+  );
+  const boxShape = createBoxShape(boxMesh, {});
+  boxBody.addShape(boxShape);
+  bodies.push(boxBody);
+
+  const constraint = new Constraint({ type: CONSTRAINT.LOCK }, ballBody, boxBody, world);
+
   window.setTimeout(() => {
     ballBody.update({ gravity: { x: 0, y: -1, z: 0 } });
-    ballBody.body.activate(true);
+    ballBody.physicsBody.activate(true);
 
     window.setInterval(() => {
       if (ballBody.type === TYPE.DYNAMIC) {
         ballBody.update({ type: TYPE.KINEMATIC });
-        ballMesh.position.y = 2;
+        ballMesh.position.set(0, 2, 0);
       } else {
         ballBody.update({ type: TYPE.DYNAMIC });
-        ballBody.body.activate(true);
+        ballBody.physicsBody.activate(true);
       }
     }, 1000);
   }, 1000);

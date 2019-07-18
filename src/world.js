@@ -43,8 +43,6 @@ function World(worldConfig) {
   this.physicsWorld.getSolverInfo().set_m_numIterations(worldConfig.solverIterations || 10);
 }
 
-module.exports = World;
-
 World.prototype.isDebugEnabled = function() {
   return this.debugDrawMode !== THREE.AmmoDebugConstants.NoDebug;
 };
@@ -138,16 +136,6 @@ World.prototype.step = function(deltaTime) {
   }
 };
 
-/* @param {?} constraint */
-World.prototype.addConstraint = function(constraint) {
-  this.physicsWorld.addConstraint(constraint, false);
-};
-
-/* @param {?} constraint */
-World.prototype.removeConstraint = function(constraint) {
-  this.physicsWorld.removeConstraint(constraint);
-};
-
 /* @param {Ammo.btCollisionObject} body */
 World.prototype.addEventListener = function(body) {
   this.eventListeners.push(Ammo.getPointer(body));
@@ -183,3 +171,5 @@ World.prototype.getDebugDrawer = function(scene, options) {
 
   return this.debugDrawer;
 };
+
+module.exports = World;
