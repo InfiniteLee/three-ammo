@@ -1,7 +1,7 @@
 {
   "name": "three-ammo",
   "version": "0.1.0",
-  "description": "",
+  "description": "A Three.js wrapper for Ammo.js",
   "homepage": "https://github.com/infinitelee/three-to-ammo",
   "main": "index.js",
   "author": "Kevin Lee <kevin@infinite-lee.com>",
@@ -14,16 +14,14 @@
     "dev": "parcel --port 9999 index.html",
     "dist": "parcel build index.js"
   },
-  "dependencies": {
-    "ammo-debug-drawer": "github:infinitelee/ammo-debug-drawer",
-    "three-to-ammo": "github:infinitelee/three-to-ammo"
-  },
   "peerDependencies": {
     "ammo.js": "*",
     "three": "*"
   },
   "devDependencies": {
-    "parcel": "^1.12.3"
+    "parcel": "^1.12.3",
+    "ammo-debug-drawer": "github:infinitelee/ammo-debug-drawer",
+    "three-to-ammo": "github:infinitelee/three-to-ammo"
   },
   "keywords": [
     "ammo",
