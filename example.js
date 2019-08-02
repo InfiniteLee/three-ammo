@@ -30,8 +30,7 @@ const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
 boxMesh.position.set(-1, 2, 0);
 scene.add(boxMesh);
 
-Ammo().then(result => {
-  Ammo = result;
+Ammo().then(Ammo => {
   const world = new World({ debugDrawMode: THREE.AmmoDebugConstants.DrawWireframe });
   world.getDebugDrawer(scene).enable();
   const floorBody = new Body({ type: TYPE.KINEMATIC }, floorMesh, world);
@@ -67,7 +66,7 @@ Ammo().then(result => {
         ballBody.update({ type: TYPE.DYNAMIC });
         ballBody.physicsBody.activate(true);
       }
-    }, 1000);
+    }, 2000);
   }, 1000);
 
   const tick = function(dt) {

@@ -216,7 +216,7 @@ Body.prototype.update = function(bodyConfig) {
     const broadphaseProxy = this.physicsBody.getBroadphaseProxy();
     broadphaseProxy.set_m_collisionFilterGroup(this.collisionFilterGroup);
     broadphaseProxy.set_m_collisionFilterMask(this.collisionFilterMask);
-    this.world.roadphase
+    this.world.broadphase
       .getOverlappingPairCache()
       .removeOverlappingPairsContainingProxy(broadphaseProxy, this.world.dispatcher);
   }
@@ -268,10 +268,9 @@ Body.prototype.destroy = function() {
   if (this.triMesh) Ammo.destroy(this.triMesh);
   if (this.localScaling) Ammo.destroy(this.localScaling);
   if (this.compoundShape) Ammo.destroy(this.compoundShape);
-  if (this.physicsBody) {
-    Ammo.destroy(this.physicsBody);
-    delete this.physicsBody;
-  }
+  this.world.removeBody(this.physicsBody);
+  Ammo.destroy(this.physicsBody);
+  delete this.physicsBody;
   Ammo.destroy(this.rbInfo);
   Ammo.destroy(this.msTransform);
   Ammo.destroy(this.motionState);
@@ -288,11 +287,8 @@ Body.prototype.syncToPhysics = (function() {
   const v = new THREE.Vector3();
   const q2 = new THREE.Vector3();
   const v2 = new THREE.Vector3();
-  return function() {
-    if (this.type === TYPE.DYNAMIC) return;
-
+  return function(setCenterOfMassTransform) {
     const body = this.physicsBody;
-
     if (!body) return;
 
     this.motionState.getWorldTransform(this.msTransform);
@@ -315,7 +311,7 @@ Body.prototype.syncToPhysics = (function() {
       this.msTransform.setRotation(this.rotation);
       this.motionState.setWorldTransform(this.msTransform);
 
-      if (this.type === TYPE.STATIC) {
+      if (this.type === TYPE.STATIC || setCenterOfMassTransform) {
         this.physicsBody.setCenterOfMassTransform(this.msTransform);
       }
     }
@@ -330,8 +326,6 @@ Body.prototype.syncFromPhysics = (function() {
     q1 = new THREE.Quaternion(),
     q2 = new THREE.Quaternion();
   return function() {
-    if (this.type !== TYPE.DYNAMIC) return;
-
     this.motionState.getWorldTransform(this.msTransform);
     const position = this.msTransform.getOrigin();
     const quaternion = this.msTransform.getRotation();
@@ -366,10 +360,12 @@ Body.prototype.addShape = function(collisionShape) {
 Body.prototype.removeShape = function(collisionShape) {
   const index = this.shapes.indexOf(collisionShape);
   if (this.compoundShape && index !== -1 && this.physicsBody) {
-    this.compoundShape.removeChildShape(shapes[i]);
+    this.compoundShape.removeChildShape(this.shapes[index]);
     this.shapesChanged = true;
     this.shapes.splice(index, 1);
     this.updateShapes();
+    collisionShape.destroy();
+    Ammo.destroy(collisionShape.localTransform);
   }
 };
 
