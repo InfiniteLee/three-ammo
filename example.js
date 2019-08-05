@@ -1,6 +1,6 @@
 import { World, Body, Constraint } from "./index.js";
 import { createBoxShape, createSphereShape } from "three-to-ammo";
-import { TYPE, CONSTRAINT, ACTIVATION_STATE } from "./src/constants.js";
+import { TYPE, CONSTRAINT, ACTIVATION_STATE } from "./constants.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);

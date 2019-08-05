@@ -1,5 +1,5 @@
 /* global Ammo */
-const CONSTRAINT = require("./constants").CONSTRAINT;
+const CONSTRAINT = require("../constants").CONSTRAINT;
 const CONSTRAINTS = [
   CONSTRAINT.LOCK,
   CONSTRAINT.FIXED,

@@ -2,7 +2,7 @@
 
 const EPS = 10e-6;
 
-const CONSTANTS = require("./constants");
+const CONSTANTS = require("../constants");
 
 /* @param {object} worldConfig */
 function World(worldConfig) {
