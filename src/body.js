@@ -138,7 +138,7 @@ Body.prototype._initBody = (function() {
 
     this.updateCollisionFlags();
 
-    this.world.addBody(this.physicsBody, this.collisionFilterGroup, this.collisionFilterMask);
+    this.world.addBody(this.physicsBody, this.object3D, this.collisionFilterGroup, this.collisionFilterMask);
 
     if (this.emitCollisionEvents) {
       this.world.addEventListener(this.physicsBody);
