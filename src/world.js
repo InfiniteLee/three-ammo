@@ -54,7 +54,6 @@ World.prototype.addBody = function(body, object3D, group, mask) {
 /* @param {Ammo.btCollisionObject} body */
 World.prototype.removeBody = function(body) {
   this.physicsWorld.removeRigidBody(body);
-  this.removeEventListener(body);
   const bodyptr = Ammo.getPointer(body);
   this.object3Ds.delete(bodyptr);
   this.collisions.delete(bodyptr);
