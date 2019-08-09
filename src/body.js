@@ -267,7 +267,12 @@ Body.prototype.update = function(bodyConfig) {
 Body.prototype.destroy = function() {
   if (this.triMesh) Ammo.destroy(this.triMesh);
   if (this.localScaling) Ammo.destroy(this.localScaling);
+
+  for (let i = 0; i < this.shapes.length; i++) {
+    this.compoundShape.removeChildShape([i]);
+  }
   if (this.compoundShape) Ammo.destroy(this.compoundShape);
+
   this.world.removeBody(this.physicsBody);
   Ammo.destroy(this.physicsBody);
   delete this.physicsBody;
@@ -359,13 +364,11 @@ Body.prototype.addShape = function(collisionShape) {
 
 Body.prototype.removeShape = function(collisionShape) {
   const index = this.shapes.indexOf(collisionShape);
-  if (this.compoundShape && index !== -1 && this.physicsBody) {
+  if (this.compoundShape && index !== -1) {
     this.compoundShape.removeChildShape(this.shapes[index]);
     this.shapesChanged = true;
     this.shapes.splice(index, 1);
     this.updateShapes();
-    collisionShape.destroy();
-    Ammo.destroy(collisionShape.localTransform);
   }
 };
 
