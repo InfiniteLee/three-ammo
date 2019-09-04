@@ -374,7 +374,7 @@ Body.prototype.removeShape = function(collisionShape) {
 
 Body.prototype.updateMass = function() {
   const shape = this.physicsBody.getCollisionShape();
-  const mass = this.type === TYPE.DYNAMIC ? this.mass : 0;
+  const mass = this.type === TYPE.STATIC ? 0 : this.mass;
   shape.calculateLocalInertia(mass, this.localInertia);
   this.physicsBody.setMassProps(mass, this.localInertia);
   this.physicsBody.updateInertiaTensor();
