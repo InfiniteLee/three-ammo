@@ -1,8 +1,6 @@
 /* global Ammo,THREE */
-const AmmoDebugDrawer = require("ammo-debug-drawer");
-const threeToAmmo = require("three-to-ammo");
-const CONSTANTS = require("../constants"),
-  ACTIVATION_STATE = CONSTANTS.ACTIVATION_STATE,
+import CONSTANTS from "../constants.js";
+const ACTIVATION_STATE = CONSTANTS.ACTIVATION_STATE,
   COLLISION_FLAG = CONSTANTS.COLLISION_FLAG,
   SHAPE = CONSTANTS.SHAPE,
   TYPE = CONSTANTS.TYPE,
@@ -46,7 +44,7 @@ function almostEqualsQuaternion(epsilon, u, v) {
  * Initializes a body component, assigning it to the physics system and binding listeners for
  * parsing the elements geometry.
  */
-function Body(bodyConfig, object3D, world) {
+function Body(bodyConfig, matrix, world) {
   this.loadedEvent = bodyConfig.loadedEvent ? bodyConfig.loadedEvent : "";
   this.mass = bodyConfig.hasOwnProperty("mass") ? bodyConfig.mass : 1;
   const worldGravity = world.physicsWorld.getGravity();
@@ -77,7 +75,7 @@ function Body(bodyConfig, object3D, world) {
   this.collisionFilterMask = bodyConfig.hasOwnProperty("collisionFilterMask") ? bodyConfig.collisionFilterMask : 1; //32-bit mask
   this.scaleAutoUpdate = bodyConfig.hasOwnProperty("scaleAutoUpdate") ? bodyConfig.scaleAutoUpdate : true;
 
-  this.object3D = object3D;
+  this.matrix = matrix;
   this.world = world;
   this.shapes = [];
 
@@ -90,14 +88,11 @@ function Body(bodyConfig, object3D, world) {
 Body.prototype._initBody = (function() {
   const pos = new THREE.Vector3();
   const quat = new THREE.Quaternion();
-  const boundingBox = new THREE.Box3();
-
+  const scale = new THREE.Vector3();
   return function() {
     this.localScaling = new Ammo.btVector3();
 
-    const obj = this.object3D;
-    obj.getWorldPosition(pos);
-    obj.getWorldQuaternion(quat);
+    this.matrix.decompose(pos, quat, scale);
 
     this.prevScale = new THREE.Vector3(1, 1, 1);
     this.prevNumChildShapes = 0;
@@ -138,7 +133,7 @@ Body.prototype._initBody = (function() {
 
     this.updateCollisionFlags();
 
-    this.world.addBody(this.physicsBody, this.object3D, this.collisionFilterGroup, this.collisionFilterMask);
+    this.world.addBody(this.physicsBody, this.matrix, this.collisionFilterGroup, this.collisionFilterMask);
 
     if (this.emitCollisionEvents) {
       this.world.addEventListener(this.physicsBody);
@@ -151,12 +146,15 @@ Body.prototype._initBody = (function() {
  */
 Body.prototype.updateShapes = (function() {
   const needsPolyhedralInitialization = [SHAPE.HULL, SHAPE.HACD, SHAPE.VHACD];
+  const pos = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
   return function() {
     let updated = false;
 
-    const obj = this.object3D;
-    if (this.scaleAutoUpdate && this.prevScale && !almostEqualsVector3(0.001, obj.scale, this.prevScale)) {
-      this.prevScale.copy(obj.scale);
+    this.matrix.decompose(pos, quat, scale);
+    if (this.scaleAutoUpdate && this.prevScale && !almostEqualsVector3(0.001, scale, this.prevScale)) {
+      this.prevScale.copy(scale);
       updated = true;
 
       this.localScaling.setValue(this.prevScale.x, this.prevScale.y, this.prevScale.z);
@@ -288,31 +286,31 @@ Body.prototype.destroy = function() {
  * Updates the rigid body's position, velocity, and rotation, based on the scene.
  */
 Body.prototype.syncToPhysics = (function() {
-  const q = new THREE.Quaternion();
-  const v = new THREE.Vector3();
-  const q2 = new THREE.Vector3();
-  const v2 = new THREE.Vector3();
+  const pos = new THREE.Vector3(),
+    quat = new THREE.Quaternion(),
+    scale = new THREE.Vector3(),
+    q = new THREE.Vector3(),
+    v = new THREE.Vector3();
   return function(setCenterOfMassTransform) {
     const body = this.physicsBody;
     if (!body) return;
 
     this.motionState.getWorldTransform(this.msTransform);
 
-    this.object3D.getWorldPosition(v);
-    this.object3D.getWorldQuaternion(q);
+    this.matrix.decompose(pos, quat, scale);
 
     const position = this.msTransform.getOrigin();
-    v2.set(position.x(), position.y(), position.z());
+    v.set(position.x(), position.y(), position.z());
 
     const quaternion = this.msTransform.getRotation();
-    q2.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
+    q.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
 
-    if (!almostEqualsVector3(0.001, v, v2) || !almostEqualsQuaternion(0.001, q, q2)) {
+    if (!almostEqualsVector3(0.001, pos, v) || !almostEqualsQuaternion(0.001, quat, q)) {
       if (!this.physicsBody.isActive()) {
         this.physicsBody.activate(true);
       }
-      this.msTransform.getOrigin().setValue(v.x, v.y, v.z);
-      this.rotation.setValue(q.x, q.y, q.z, q.w);
+      this.msTransform.getOrigin().setValue(pos.x, pos.y, pos.z);
+      this.rotation.setValue(quat.x, quat.y, quat.z, quat.w);
       this.msTransform.setRotation(this.rotation);
       this.motionState.setWorldTransform(this.msTransform);
 
@@ -327,9 +325,9 @@ Body.prototype.syncToPhysics = (function() {
  * Updates the scene object's position and rotation, based on the physics simulation.
  */
 Body.prototype.syncFromPhysics = (function() {
-  const v = new THREE.Vector3(),
-    q1 = new THREE.Quaternion(),
-    q2 = new THREE.Quaternion();
+  const pos = new THREE.Vector3(),
+    quat = new THREE.Quaternion(),
+    scale = new THREE.Vector3();
   return function() {
     this.motionState.getWorldTransform(this.msTransform);
     const position = this.msTransform.getOrigin();
@@ -338,15 +336,10 @@ Body.prototype.syncFromPhysics = (function() {
     const body = this.physicsBody;
 
     if (!body) return;
-
-    q1.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
-    this.object3D.parent.getWorldQuaternion(q2);
-    q1.multiply(q2.inverse());
-    this.object3D.quaternion.copy(q1);
-
-    v.set(position.x(), position.y(), position.z());
-    this.object3D.parent.worldToLocal(v);
-    this.object3D.position.copy(v);
+    this.matrix.decompose(pos, quat, scale);
+    pos.set(position.x(), position.y(), position.z());
+    quat.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
+    this.matrix.compose(pos, quat, scale);
   };
 })();
 
@@ -373,9 +366,8 @@ Body.prototype.removeShape = function(collisionShape) {
 };
 
 Body.prototype.updateMass = function() {
-  const shape = this.physicsBody.getCollisionShape();
   const mass = this.type === TYPE.STATIC ? 0 : this.mass;
-  shape.calculateLocalInertia(mass, this.localInertia);
+  this.compoundShape.calculateLocalInertia(mass, this.localInertia);
   this.physicsBody.setMassProps(mass, this.localInertia);
   this.physicsBody.updateInertiaTensor();
 };
@@ -408,4 +400,4 @@ Body.prototype.getVelocity = function() {
   return this.physicsBody.getLinearVelocity();
 };
 
-module.exports = Body;
+export default Body;

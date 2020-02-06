@@ -2,10 +2,11 @@
 
 const EPS = 10e-6;
 
-const CONSTANTS = require("../constants");
+import { AmmoDebugDrawer, AmmoDebugConstants } from "ammo-debug-drawer";
+import CONSTANTS from "../constants.js";
 
 /* @param {object} worldConfig */
-function World(worldConfig) {
+const World = function(worldConfig) {
   this.collisionConfiguration = null;
   this.dispatcher = null;
   this.broadphase = null;
@@ -18,7 +19,7 @@ function World(worldConfig) {
   this.collisionKeys = [];
 
   this.epsilon = worldConfig.epsilon || EPS;
-  this.debugDrawMode = worldConfig.debugDrawMode || THREE.AmmoDebugConstants.NoDebug;
+  this.debugDrawMode = worldConfig.debugDrawMode || AmmoDebugConstants.NoDebug;
   this.maxSubSteps = worldConfig.maxSubSteps || 4;
   this.fixedTimeStep = worldConfig.fixedTimeStep || 1 / 60;
   this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
@@ -39,10 +40,10 @@ function World(worldConfig) {
   this.physicsWorld.setGravity(gravity);
   Ammo.destroy(gravity);
   this.physicsWorld.getSolverInfo().set_m_numIterations(worldConfig.solverIterations || 10);
-}
+};
 
 World.prototype.isDebugEnabled = function() {
-  return this.debugDrawMode !== THREE.AmmoDebugConstants.NoDebug;
+  return this.debugDrawMode !== AmmoDebugConstants.NoDebug;
 };
 
 /* @param {Ammo.btCollisionObject} body */
@@ -117,14 +118,20 @@ World.prototype.destroy = function() {
  * @param {THREE.Scene} scene
  * @param {object} options
  */
-World.prototype.getDebugDrawer = function(scene, options) {
+World.prototype.getDebugDrawer = function(debugIndexArray, debugMatricesArray, debugColorsArray, options) {
   if (!this.debugDrawer) {
     options = options || {};
     options.debugDrawMode = options.debugDrawMode || this.debugDrawMode;
-    this.debugDrawer = new THREE.AmmoDebugDrawer(scene, this.physicsWorld, options);
+    this.debugDrawer = new AmmoDebugDrawer(
+      debugIndexArray,
+      debugMatricesArray,
+      debugColorsArray,
+      this.physicsWorld,
+      options
+    );
   }
 
   return this.debugDrawer;
 };
 
-module.exports = World;
+export default World;

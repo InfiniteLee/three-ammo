@@ -1,27 +1,38 @@
 {
   "name": "three-ammo",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A Three.js wrapper for Ammo.js",
   "homepage": "https://github.com/infinitelee/three-to-ammo",
-  "main": "index.js",
   "author": "Kevin Lee <kevin@infinite-lee.com>",
   "license": "MPL-2.0",
   "bugs": {
     "url": "https://github.com/infinitelee/three-ammo/issues"
   },
+  "main": "dist/threeammo.js",
   "repository": "infinitelee/three-ammo",
   "scripts": {
-    "dev": "parcel --port 9999 index.html",
-    "dist": "parcel build index.js"
+    "dev": "webpack-dev-server --mode=development",
+    "build": "rimraf ./dist && webpack --mode=production"
   },
   "peerDependencies": {
     "ammo.js": "*",
     "three": "*"
   },
   "devDependencies": {
-    "parcel": "^1.12.3",
     "ammo-debug-drawer": "github:infinitelee/ammo-debug-drawer",
-    "three-to-ammo": "github:infinitelee/three-to-ammo"
+    "ammo.js": "github:mozillareality/ammo.js#hubs/master",
+    "eslint": "^6.7.2",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-plugin-prettier": "^3.1.1",
+    "file-loader": "^5.0.2",
+    "prettier": "^1.19.1",
+    "stats.js": "^0.17.0",
+    "three": "^0.112.0",
+    "three-to-ammo": "github:infinitelee/three-to-ammo",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.9.0",
+    "worker-loader": "^2.0.0"
   },
   "keywords": [
     "ammo",

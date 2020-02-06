@@ -47,5 +47,32 @@ module.exports = {
     HINGE: "hinge",
     CONE_TWIST: "coneTwist",
     POINT_TO_POINT: "pointToPoint"
+  },
+  MESSAGE_TYPES: {
+    INIT: 0,
+    READY: 1,
+    ADD_BODY: 2,
+    BODY_READY: 3,
+    UPDATE_BODY: 4,
+    REMOVE_BODY: 5,
+    ADD_SHAPES: 6,
+    SHAPES_READY: 7,
+    REMOVE_SHAPES: 8,
+    ADD_CONSTRAINT: 9,
+    CONSTRAINT_READY: 10,
+    REMOVE_CONSTRAINT: 11,
+    ENABLE_DEBUG: 12,
+    RESET_DYNAMIC_BODY: 13,
+    TRANSFER_DATA: 14
+  },
+  BUFFER_CONFIG: {
+    HEADER_LENGTH: 10,
+    MAX_BODIES: 10000,
+    BODY_DATA_SIZE: 16
+  },
+  BUFFER_STATE: {
+    UNINITIALIZED: 0,
+    READY: 1,
+    CONSUMED: 2
   }
 };
