@@ -8,7 +8,7 @@
   "bugs": {
     "url": "https://github.com/infinitelee/three-ammo/issues"
   },
-  "main": "dist/threeammo.js",
+  "main": "index.js",
   "repository": "infinitelee/three-ammo",
   "scripts": {
     "dev": "webpack-dev-server --mode=development",

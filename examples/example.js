@@ -1,4 +1,7 @@
-import { World, Body, Constraint, CONSTANTS } from "../index.js";
+import CONSTANTS from "../constants"
+import Body from "../src/body";
+import World from "../src/world";
+import Constraint from "../src/constraint";
 const TYPE = CONSTANTS.TYPE,
   CONSTRAINT = CONSTANTS.CONSTRAINT,
   ACTIVATION_STATE = CONSTANTS.ACTIVATION_STATE;

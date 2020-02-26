@@ -1,4 +1,6 @@
-/* global Ammo,THREE */
+/* global Ammo */
+import * as THREE from "three";
+
 import CONSTANTS from "../constants.js";
 const ACTIVATION_STATE = CONSTANTS.ACTIVATION_STATE,
   COLLISION_FLAG = CONSTANTS.COLLISION_FLAG,
@@ -94,6 +96,7 @@ Body.prototype._initBody = (function() {
 
     this.matrix.decompose(pos, quat, scale);
 
+    this.localScaling.setValue(scale.x, scale.y, scale.z);
     this.prevScale = new THREE.Vector3(1, 1, 1);
     this.prevNumChildShapes = 0;
 
@@ -109,6 +112,7 @@ Body.prototype._initBody = (function() {
     this.localInertia = new Ammo.btVector3(0, 0, 0);
 
     this.compoundShape = new Ammo.btCompoundShape(true);
+    this.compoundShape.setLocalScaling(this.localScaling);
 
     this.rbInfo = new Ammo.btRigidBodyConstructionInfo(
       this.mass,
@@ -151,7 +155,6 @@ Body.prototype.updateShapes = (function() {
   const scale = new THREE.Vector3();
   return function() {
     let updated = false;
-
     this.matrix.decompose(pos, quat, scale);
     if (this.scaleAutoUpdate && this.prevScale && !almostEqualsVector3(0.001, scale, this.prevScale)) {
       this.prevScale.copy(scale);

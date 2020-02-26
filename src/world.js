@@ -1,9 +1,10 @@
-/* global Ammo,THREE */
+/* global Ammo */
 
 const EPS = 10e-6;
 
 import { AmmoDebugDrawer, AmmoDebugConstants } from "ammo-debug-drawer";
 import CONSTANTS from "../constants.js";
+import * as THREE from "three";
 
 /* @param {object} worldConfig */
 const World = function(worldConfig) {

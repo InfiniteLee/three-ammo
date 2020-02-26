@@ -175,7 +175,6 @@ const Constraint = function(constraintConfig, body, targetBody, world) {
     }
   }
 
-  Ammo.destroy(bodyTransform);
   Ammo.destroy(targetTransform);
 
   this.world.physicsWorld.addConstraint(this.physicsConstraint, false);

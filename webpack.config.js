@@ -23,7 +23,8 @@ module.exports = (env, argv) => ({
   plugins: [new webpack.ProvidePlugin({ THREE: "three" })],
   devtool: argv.mode === "production" ? "source-map" : "inline-source-map",
   devServer: {
-    host: "0.0.0.0"
+    host: "0.0.0.0",
+    port: "8888"
   },
   module: {
     rules: [

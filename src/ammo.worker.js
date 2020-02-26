@@ -5,8 +5,10 @@ const SHAPE = CONSTANTS.SHAPE;
 const CONSTRAINT = CONSTANTS.CONSTRAINT;
 const BUFFER_CONFIG = CONSTANTS.BUFFER_CONFIG;
 const BUFFER_STATE = CONSTANTS.BUFFER_STATE;
-import { World, Body, Constraint } from "../index.js";
-import "three";
+import * as THREE from "three";
+import World from "./world";
+import Body from "./body";
+import Constraint from "./constraint";
 import { DefaultBufferSize } from "ammo-debug-drawer";
 
 import { createCollisionShapes } from "three-to-ammo";
@@ -27,12 +29,12 @@ const shapes = {};
 const constraints = {};
 const matrices = {};
 const indexes = {};
+const ptrToIndex = {};
 
-const addBodyQueue = [];
-const removeBodyQueue = [];
-const addShapeQueue = [];
-const addConstraintQueue = [];
-const resetDynamicBodyQueue = [];
+const messageQueue = [];
+
+const FOO = new THREE.Matrix4();
+FOO.fromArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
 let freeIndex = 0;
 const freeIndexArray = new Int32Array(BUFFER_CONFIG.MAX_BODIES);
@@ -43,7 +45,7 @@ freeIndexArray[BUFFER_CONFIG.MAX_BODIES - 1] = -1;
 
 const tempMatrix = new THREE.Matrix4();
 
-let world, headerIntArray, objectMatricesFloatArray, lastTick, getPointer;
+let world, headerIntArray, objectMatricesFloatArray, objectMatricesIntArray, lastTick, getPointer;
 let usingSharedArrayBuffer = false;
 
 function isBufferConsumed() {
@@ -69,39 +71,64 @@ const tick = () => {
     world.step(dt / 1000);
     lastTick = now;
 
-    while (addBodyQueue.length > 0) {
-      addBody(addBodyQueue.pop());
-    }
-
-    while (addShapeQueue.length > 0) {
-      addShape(addShapeQueue.pop());
-    }
-
-    while (addConstraintQueue.length > 0) {
-      addConstraint(addConstraintQueue.pop());
-    }
-
-    while (resetDynamicBodyQueue.length > 0) {
-      resetDynamicBody(resetDynamicBodyQueue.pop());
-    }
-
-    while (removeBodyQueue.length > 0) {
-      removeBody(removeBodyQueue.pop());
+    while (messageQueue.length > 0) {
+      const message = messageQueue.shift();
+      switch (message.type) {
+        case MESSAGE_TYPES.ADD_BODY:
+          addBody(message);
+          break;
+        case MESSAGE_TYPES.UPDATE_BODY:
+          updateBody(message);
+          break;
+        case MESSAGE_TYPES.REMOVE_BODY:
+          removeBody(message);
+          break;
+        case MESSAGE_TYPES.ADD_SHAPES:
+          addShapes(message);
+          break;
+        case MESSAGE_TYPES.ADD_CONSTRAINT:
+          addConstraint(message);
+          break;
+        case MESSAGE_TYPES.RESET_DYNAMIC_BODY:
+          resetDynamicBody(message);
+          break;
+        case MESSAGE_TYPES.ACTIVATE_BODY:
+          activateBody(message);
+      }
     }
 
     for (let i = 0; i < uuids.length; i++) {
       const uuid = uuids[i];
       const body = bodies[uuid];
+      const index = indexes[uuid];
+      const matrix = matrices[uuid];
+
+      matrix.fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE);
+      body.updateShapes();
+
       if (body.type === TYPE.DYNAMIC) {
         body.syncFromPhysics();
-      } else if (body.type === TYPE.KINEMATIC) {
-        tempMatrix.fromArray(objectMatricesFloatArray, i * 16);
-        matrices[uuid].copy(tempMatrix);
-        body.syncToPhysics();
+      } else {
+        body.syncToPhysics(false);
       }
 
-      const matrix = matrices[uuid];
-      objectMatricesFloatArray.set(matrix.elements, i * 16);
+      objectMatricesFloatArray.set(matrix.elements, index * BUFFER_CONFIG.BODY_DATA_SIZE);
+
+      objectMatricesFloatArray[i * BUFFER_CONFIG.BODY_DATA_SIZE + 16] = body.physicsBody.getLinearVelocity().length();
+      objectMatricesFloatArray[i * BUFFER_CONFIG.BODY_DATA_SIZE + 17] = body.physicsBody.getAngularVelocity().length();
+
+      const ptr = getPointer(body.physicsBody);
+      const collisions = world.collisions.get(ptr);
+      for (let j = 0; j < 8; j++) {
+        if (!collisions || j >= collisions.length) {
+          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = -1;
+        } else {
+          const collidingPtr = collisions[j];
+          if (ptrToIndex[collidingPtr]) {
+            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = ptrToIndex[collidingPtr];
+          }
+        }
+      }
     }
 
     releaseBuffer();
@@ -114,11 +141,21 @@ const initSharedArrayBuffer = sharedArrayBuffer => {
    */
   usingSharedArrayBuffer = true;
   headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH);
-  objectMatricesFloatArray = new Float32Array(sharedArrayBuffer, BUFFER_CONFIG.HEADER_LENGTH * 4);
+  objectMatricesFloatArray = new Float32Array(
+    sharedArrayBuffer,
+    BUFFER_CONFIG.HEADER_LENGTH * 4,
+    BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+  );
+  objectMatricesIntArray = new Int32Array(
+    sharedArrayBuffer,
+    BUFFER_CONFIG.HEADER_LENGTH * 4,
+    BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+  );
 };
 
 const initTransferrables = arrayBuffer => {
   objectMatricesFloatArray = new Float32Array(arrayBuffer);
+  objectMatricesIntArray = new Int32Array(arrayBuffer);
 };
 
 function initDebug(debugSharedArrayBuffer, world) {
@@ -138,15 +175,26 @@ function addBody({ uuid, matrix, options }) {
     const transform = new THREE.Matrix4();
     transform.fromArray(matrix);
     matrices[uuid] = transform;
-    objectMatricesFloatArray.set(transform, freeIndex * 16);
+
+    objectMatricesFloatArray.set(transform.elements, freeIndex * BUFFER_CONFIG.BODY_DATA_SIZE);
     bodies[uuid] = new Body(options || {}, transform, world);
+    const ptr = getPointer(bodies[uuid].physicsBody);
+    ptrToIndex[ptr] = freeIndex;
 
     postMessage({ type: MESSAGE_TYPES.BODY_READY, uuid, index: freeIndex });
     freeIndex = nextFreeIndex;
   }
 }
 
-function removeBody(uuid) {
+function updateBody({ uuid, options }) {
+  if (bodies[uuid]) {
+    bodies[uuid].update(options);
+    bodies[uuid].physicsBody.activate(true);
+  }
+}
+
+function removeBody({ uuid }) {
+  delete ptrToIndex[getPointer(bodies[uuid].physicsBody)];
   bodies[uuid].destroy();
   delete bodies[uuid];
   delete matrices[uuid];
@@ -158,43 +206,50 @@ function removeBody(uuid) {
   uuids.splice(uuids.indexOf(uuid), 1);
 }
 
-function addShape({ uuid, vertices, matrices, indexes, matrixWorld, options }) {
-  const physicsShapes = createCollisionShapes(vertices, matrices, indexes, matrixWorld, options || { type: SHAPE.BOX });
+const IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
-  const shapeIds = [];
+function addShapes({ bodyUuid, shapesUuid, vertices, matrices, indexes, matrixWorld, options }) {
+  if (!bodies[bodyUuid]) return;
 
-  for (let i = 0; i < physicsShapes.length; i++) {
-    const shape = physicsShapes[i];
-    bodies[uuid].addShape(shape);
-    const shapeId = getPointer(shape);
-    shapes[shapeId] = shape;
-    shapeIds.push(shapeId);
+  if (!matrixWorld) {
+    matrixWorld = IDENTITY_MATRIX;
   }
 
-  postMessage({ type: MESSAGE_TYPES.SHAPES_READY, uuid, shapeIds });
+  const physicsShapes = createCollisionShapes(vertices, matrices, indexes, matrixWorld, options || { type: SHAPE.BOX });
+  for (let i = 0; i < physicsShapes.length; i++) {
+    const shape = physicsShapes[i];
+    bodies[bodyUuid].addShape(shape);
+  }
+  shapes[shapesUuid] = physicsShapes;
+  postMessage({ type: MESSAGE_TYPES.SHAPES_READY, bodyUuid, shapesUuid });
 }
 
-function addConstraint({ bodyUuid, targetUuid, options }) {
+function addConstraint({ constraintId, bodyUuid, targetUuid, options }) {
   if (bodies[bodyUuid] && bodies[targetUuid]) {
     options = options || {};
     if (!options.hasOwnProperty("type")) {
       options.type = CONSTRAINT.LOCK;
     }
     const constraint = new Constraint(options, bodies[bodyUuid], bodies[targetUuid], world);
-    const constraintId = getPointer(constraint.physicsConstraint);
     constraints[constraintId] = constraint;
     postMessage({ type: MESSAGE_TYPES.CONSTRAINT_READY, bodyUuid, targetUuid, constraintId });
   }
 }
 
-function resetDynamicBody(uuid) {
+function resetDynamicBody({ uuid }) {
   if (bodies[uuid]) {
     const body = bodies[uuid];
     const index = indexes[uuid];
-    matrices[uuid].fromArray(objectMatricesFloatArray, index * 16);
+    matrices[uuid].fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE);
     body.syncToPhysics(true);
     body.physicsBody.getLinearVelocity().setValue(0, 0, 0);
     body.physicsBody.getAngularVelocity().setValue(0, 0, 0);
+  }
+}
+
+function activateBody({ uuid }) {
+  if (bodies[uuid]) {
+    bodies[uuid].physicsBody.activate();
   }
 }
 
@@ -218,47 +273,44 @@ onmessage = async event => {
     });
   } else if (event.data.type === MESSAGE_TYPES.TRANSFER_DATA) {
     objectMatricesFloatArray = event.data.objectMatricesFloatArray;
+    objectMatricesIntArray = new Int32Array(objectMatricesFloatArray.buffer);
   } else if (world) {
     switch (event.data.type) {
       case MESSAGE_TYPES.ADD_BODY: {
-        addBodyQueue.push(event.data);
+        messageQueue.push(event.data);
         break;
       }
 
       case MESSAGE_TYPES.UPDATE_BODY: {
-        const uuid = event.data.uuid;
-        if (bodies[uuid]) {
-          bodies[uuid].update(event.data.options);
-          bodies[uuid].physicsBody.activate(true);
-        }
+        messageQueue.push(event.data);
         break;
       }
 
       case MESSAGE_TYPES.REMOVE_BODY: {
         const uuid = event.data.uuid;
         if (uuids.indexOf(uuid) !== -1) {
-          removeBodyQueue.push(uuid);
+          messageQueue.push(event.data);
         }
         break;
       }
 
       case MESSAGE_TYPES.ADD_SHAPES: {
-        const uuid = event.data.uuid;
-        if (bodies[uuid]) {
-          addShape(event.data);
+        const bodyUuid = event.data.bodyUuid;
+        if (bodies[bodyUuid]) {
+          addShapes(event.data);
         } else {
-          addShapeQueue.push(event.data);
+          messageQueue.push(event.data);
         }
         break;
       }
 
       case MESSAGE_TYPES.REMOVE_SHAPES: {
-        const uuid = event.data.uuid;
-        const shapeIds = event.data.shapeIds;
-        if (bodies[uuid]) {
-          for (let i = 0; i < shapeIds.length; i++) {
-            const shape = shapes[shapeIds[i]];
-            bodies[uuid].removeShape(shape);
+        const bodyUuid = event.data.bodyUuid;
+        const shapesUuid = event.data.shapesUuid;
+        if (bodies[bodyUuid] && shapes[shapesUuid]) {
+          for (let i = 0; i < shapes[shapesUuid].length; i++) {
+            const shape = shapes[shapesUuid][i];
+            bodies[bodyUuid].removeShape(shape);
           }
         }
         break;
@@ -270,7 +322,7 @@ onmessage = async event => {
         if (bodies[bodyUuid] && bodies[targetUuid]) {
           addConstraint(event.data);
         } else {
-          addConstraintQueue.push(event.data);
+          messageQueue.push(event.data);
         }
         break;
       }
@@ -300,7 +352,12 @@ onmessage = async event => {
       }
 
       case MESSAGE_TYPES.RESET_DYNAMIC_BODY: {
-        resetDynamicBodyQueue.push(event.data.uuid);
+        messageQueue.push(event.data);
+        break;
+      }
+
+      case MESSAGE_TYPES.ACTIVATE_BODY: {
+        messageQueue.push(event.data);
         break;
       }
     }

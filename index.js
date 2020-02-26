@@ -1,12 +1,8 @@
 import "three";
-import world from "./src/world";
-import body from "./src/body";
-import constraint from "./src/constraint";
 import constants from "./constants";
-export const World = world;
-export const Body = body;
-export const Constraint = constraint;
+import ammoWorker from "./src/ammo.worker";
 export const CONSTANTS = constants;
+export const AmmoWorker = ammoWorker;
 
 import { iterateGeometries } from "three-to-ammo";
 const MESSAGE_TYPES = CONSTANTS.MESSAGE_TYPES;
@@ -33,41 +29,52 @@ export const WorkerHelpers = function(ammoWorker) {
     });
   };
 
-  const addShapes = function(uuid, mesh, options = {}) {
-    inverse.getInverse(mesh.parent.matrix);
-    transform.multiplyMatrices(inverse, mesh.parent.matrix);
+  const addShapes = function(bodyUuid, shapesUuid, mesh, options = {}) {
+    if (mesh) {
+      inverse.getInverse(mesh.parent.matrix);
+      transform.multiplyMatrices(inverse, mesh.parent.matrix);
+      const vertices = [];
+      const matrices = [];
+      const indexes = [];
 
-    const vertices = [];
-    const matrices = [];
-    const indexes = [];
+      mesh.updateMatrixWorld(true);
+      iterateGeometries(mesh, options, (vertexArray, matrix, index) => {
+        vertices.push(vertexArray);
+        matrices.push(matrix);
+      });
 
-    iterateGeometries(mesh, options, (vertexArray, matrix, index) => {
-      vertices.push(vertexArray);
-      matrices.push(matrix);
-      indexes.push(index);
-    });
-    ammoWorker.postMessage({
-      type: MESSAGE_TYPES.ADD_SHAPES,
-      uuid,
-      vertices,
-      matrices,
-      indexes,
-      matrixWorld: mesh.matrixWorld.elements,
-      options
-    });
+      ammoWorker.postMessage({
+        type: MESSAGE_TYPES.ADD_SHAPES,
+        bodyUuid,
+        shapesUuid,
+        vertices,
+        matrices,
+        indexes,
+        matrixWorld: mesh.matrixWorld.elements,
+        options
+      });
+    } else {
+      ammoWorker.postMessage({
+        type: MESSAGE_TYPES.ADD_SHAPES,
+        bodyUuid,
+        shapesUuid,
+        options
+      });
+    }
   };
 
-  const removeShapes = function(uuid, shapeIds) {
+  const removeShapes = function(bodyUuid, shapesUuid) {
     ammoWorker.postMessage({
       type: MESSAGE_TYPES.REMOVE_SHAPES,
-      uuid,
-      shapeIds
+      bodyUuid,
+      shapesUuid
     });
   };
 
-  const addConstraint = function(bodyUuid, targetUuid, options = {}) {
+  const addConstraint = function(constraintId, bodyUuid, targetUuid, options = {}) {
     ammoWorker.postMessage({
       type: MESSAGE_TYPES.ADD_CONSTRAINT,
+      constraintId,
       bodyUuid,
       targetUuid,
       options
@@ -104,6 +111,13 @@ export const WorkerHelpers = function(ammoWorker) {
     });
   };
 
+  const activateBody = function(uuid) {
+    ammoWorker.postMessage({
+      type: MESSAGE_TYPES.ACTIVATE_BODY,
+      uuid
+    });
+  };
+
   return {
     addBody,
     updateBody,
@@ -113,6 +127,7 @@ export const WorkerHelpers = function(ammoWorker) {
     addConstraint,
     removeConstraint,
     enableDebug,
-    resetDynamicBody
+    resetDynamicBody,
+    activateBody
   };
 };

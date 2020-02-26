@@ -63,7 +63,10 @@ const ammoWorker = new AmmoWorker();
 
 const workerHelpers = new WorkerHelpers(ammoWorker);
 
-const arrayBuffer = new ArrayBuffer(4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES);
+const arrayBuffer = new ArrayBuffer(
+  4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES + //matrices
+    4 * BUFFER_CONFIG.MAX_BODIES //velocities
+);
 let objectMatricesFloatArray = new Float32Array(arrayBuffer);
 
 /* DEBUG RENDERING */
@@ -83,17 +86,20 @@ debugMesh.frustumCulled = false;
 debugMesh.renderOrder = 999;
 scene.add(debugMesh);
 
-ammoWorker.postMessage({
-  type: MESSAGE_TYPES.INIT,
-  worldConfig: { debugDrawMode: AmmoDebugConstants.DrawWireframe },
-  arrayBuffer
-});
+ammoWorker.postMessage(
+  {
+    type: MESSAGE_TYPES.INIT,
+    worldConfig: { debugDrawMode: AmmoDebugConstants.DrawWireframe },
+    arrayBuffer
+  },
+  [arrayBuffer]
+);
 ammoWorker.onmessage = async event => {
   if (event.data.type === MESSAGE_TYPES.READY) {
     // workerHelpers.enableDebug(true, debugSharedArrayBuffer);
 
     workerHelpers.addBody("floor", floorMesh, { type: TYPE.STATIC });
-    workerHelpers.addShapes("floor", floorMesh, { type: SHAPE.BOX });
+    workerHelpers.addShapes("floor", "floorShape", floorMesh, { type: SHAPE.BOX });
 
     for (let i = 0; i < ballCount; i++) {
       const matrix = new THREE.Matrix4();
@@ -106,7 +112,8 @@ ammoWorker.onmessage = async event => {
       });
       ammoWorker.postMessage({
         type: MESSAGE_TYPES.ADD_SHAPES,
-        uuid: i,
+        bodyUuid: i,
+        shapesUuid: i,
         matrixWorld: matrix.elements,
         options: { type: SHAPE.SPHERE, fit: FIT.MANUAL, sphereRadius: 0.25 }
       });
@@ -146,16 +153,22 @@ const tick = function(t) {
     for (let i = 0; i < uuids.length; i++) {
       const uuid = uuids[i];
       if (uuid === "floor") {
-        objectMatricesFloatArray.set(floorMesh.matrixWorld.elements, indexes[uuid] * 16);
+        objectMatricesFloatArray.set(floorMesh.matrixWorld.elements, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
       } else {
-        matrix.fromArray(objectMatricesFloatArray, indexes[uuid] * 16);
+        matrix.fromArray(objectMatricesFloatArray, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
         matrix.decompose(pos, quat, scale);
         if (pos.y < -2) {
           matrix.setPosition(Math.random() * 10 - 5, Math.random() * 4 + 1, Math.random() * 10 - 5);
-          objectMatricesFloatArray.set(matrix.elements, indexes[uuid] * 16);
+          objectMatricesFloatArray.set(matrix.elements, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
           workerHelpers.resetDynamicBody(uuid);
         }
         ballMesh.setMatrixAt(uuid, matrix);
+        // print velocities
+        // console.log(
+        //   uuid,
+        //   objectMatricesFloatArray[indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE + 16],
+        //   objectMatricesFloatArray[indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE + 17]
+        // );
       }
       ballMesh.instanceMatrix.needsUpdate = true;
     }

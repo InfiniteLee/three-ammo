@@ -64,7 +64,9 @@ const ammoWorker = new AmmoWorker();
 const workerHelpers = new WorkerHelpers(ammoWorker);
 
 const sharedArrayBuffer = new SharedArrayBuffer(
-  4 * BUFFER_CONFIG.HEADER_LENGTH + 4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+  4 * BUFFER_CONFIG.HEADER_LENGTH + //header
+  4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES + //matrices
+    4 * BUFFER_CONFIG.MAX_BODIES //velocities
 );
 const headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH * 4);
 const objectMatricesIntArray = new Uint32Array(sharedArrayBuffer, BUFFER_CONFIG.HEADER_LENGTH * 4);
@@ -98,7 +100,7 @@ ammoWorker.onmessage = async event => {
     // workerHelpers.enableDebug(true, debugSharedArrayBuffer);
 
     workerHelpers.addBody("floor", floorMesh, { type: TYPE.STATIC });
-    workerHelpers.addShapes("floor", floorMesh, { type: SHAPE.BOX });
+    workerHelpers.addShapes("floor", "floorShape", floorMesh, { type: SHAPE.BOX });
 
     for (let i = 0; i < ballCount; i++) {
       const matrix = new THREE.Matrix4();
@@ -111,7 +113,8 @@ ammoWorker.onmessage = async event => {
       });
       ammoWorker.postMessage({
         type: MESSAGE_TYPES.ADD_SHAPES,
-        uuid: i,
+        bodyUuid: i,
+        shapesUuid: i,
         matrixWorld: matrix.elements,
         options: { type: SHAPE.SPHERE, fit: FIT.MANUAL, sphereRadius: 0.25 }
       });
@@ -149,13 +152,13 @@ const tick = function(t) {
     for (let i = 0; i < uuids.length; i++) {
       const uuid = uuids[i];
       if (uuid === "floor") {
-        objectMatricesFloatArray.set(floorMesh.matrixWorld.elements, indexes[uuid] * 16);
+        objectMatricesFloatArray.set(floorMesh.matrixWorld.elements, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
       } else {
-        matrix.fromArray(objectMatricesFloatArray, indexes[uuid] * 16);
+        matrix.fromArray(objectMatricesFloatArray, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
         matrix.decompose(pos, quat, scale);
         if (pos.y < -2) {
           matrix.setPosition(Math.random() * 10 - 5, Math.random() * 4 + 1, Math.random() * 10 - 5);
-          objectMatricesFloatArray.set(matrix.elements, indexes[uuid] * 16);
+          objectMatricesFloatArray.set(matrix.elements, indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
           workerHelpers.resetDynamicBody(uuid, {});
         }
         ballMesh.setMatrixAt(uuid, matrix);

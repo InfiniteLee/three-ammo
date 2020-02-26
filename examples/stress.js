@@ -1,4 +1,6 @@
-import { World, Body, Constraint, CONSTANTS } from "../index.js";
+import { CONSTANTS } from "../index.js";
+import World from "../src/world";
+import Body from "../src/body";
 const TYPE = CONSTANTS.TYPE,
   FIT = CONSTANTS.FIT;
 import { createBoxShape, createSphereShape, iterateGeometries } from "three-to-ammo";

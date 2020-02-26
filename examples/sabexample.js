@@ -1,7 +1,6 @@
-import AmmoWorker from "../src/ammo.worker";
 import "three";
 import { AmmoDebugConstants, DefaultBufferSize } from "ammo-debug-drawer";
-import { WorkerHelpers, CONSTANTS } from "../index";
+import { AmmoWorker, WorkerHelpers, CONSTANTS } from "../index";
 const MESSAGE_TYPES = CONSTANTS.MESSAGE_TYPES,
   TYPE = CONSTANTS.TYPE,
   BUFFER_CONFIG = CONSTANTS.BUFFER_CONFIG,
@@ -18,31 +17,31 @@ document.body.appendChild(renderer.domElement);
 
 const uuids = [];
 const object3Ds = {};
-const indexes = {};
+const uuidToIndex = {};
+const IndexToUuid = {};
 const bodyOptions = {};
 const shapes = {};
-const constraints = {};
 
 const floorGeometry = new THREE.BoxBufferGeometry(5, 0.1, 5);
 const floorMaterial = new THREE.MeshBasicMaterial({ color: 0xff6600 });
 const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
 floorMesh.position.set(0, -1, 0);
 scene.add(floorMesh);
-object3Ds[floorMesh.uuid] = floorMesh;
+object3Ds["floor"] = floorMesh;
 
 const boxGeometry = new THREE.BoxBufferGeometry(0.5, 0.5, 0.5);
 const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffff });
 const boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
 boxMesh.position.set(-1, 2, 0);
 scene.add(boxMesh);
-object3Ds[boxMesh.uuid] = boxMesh;
+object3Ds["box"] = boxMesh;
 
 const ballGeometry = new THREE.SphereBufferGeometry(0.5, 32, 32);
 const ballMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
 ballMesh.position.set(0, 2, 0);
 scene.add(ballMesh);
-object3Ds[ballMesh.uuid] = ballMesh;
+object3Ds["ball"] = ballMesh;
 
 // const boxGeometry2 = new THREE.BoxBufferGeometry(0.5, 0.5, 0.5);
 // const boxMaterial2 = new THREE.MeshBasicMaterial({ color: 0x00ffff });
@@ -63,11 +62,22 @@ const ammoWorker = new AmmoWorker();
 const workerHelpers = new WorkerHelpers(ammoWorker);
 
 const sharedArrayBuffer = new SharedArrayBuffer(
-  4 * BUFFER_CONFIG.HEADER_LENGTH + 4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+  4 * BUFFER_CONFIG.HEADER_LENGTH + //header
+  4 * BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES + //matrices
+    4 * BUFFER_CONFIG.MAX_BODIES //velocities
 );
-const headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH * 4);
-const objectMatricesIntArray = new Uint32Array(sharedArrayBuffer, BUFFER_CONFIG.HEADER_LENGTH * 4);
-const objectMatricesFloatArray = new Float32Array(sharedArrayBuffer, BUFFER_CONFIG.HEADER_LENGTH * 4);
+const headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH);
+const objectMatricesIntArray = new Int32Array(
+  sharedArrayBuffer,
+  BUFFER_CONFIG.HEADER_LENGTH * 4,
+  BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+);
+const objectMatricesFloatArray = new Float32Array(
+  sharedArrayBuffer,
+  BUFFER_CONFIG.HEADER_LENGTH * 4,
+  BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+);
+
 objectMatricesIntArray[0] = BUFFER_STATE.UNINITIALIZED;
 
 /* DEBUG RENDERING */
@@ -96,37 +106,37 @@ ammoWorker.onmessage = async event => {
   if (event.data.type === MESSAGE_TYPES.READY) {
     workerHelpers.enableDebug(true, debugSharedArrayBuffer);
 
-    bodyOptions[boxMesh.uuid] = { type: TYPE.DYNAMIC, gravity: { x: 0, y: 0, z: 0 } };
-    workerHelpers.addBody(boxMesh.uuid, boxMesh, bodyOptions[boxMesh.uuid]);
-    workerHelpers.addShapes(boxMesh.uuid, boxMesh, { type: SHAPE.BOX });
+    bodyOptions["box"] = { type: TYPE.DYNAMIC, gravity: { x: 0, y: 0, z: 0 } };
+    workerHelpers.addBody("box", boxMesh, bodyOptions["box"]);
+    workerHelpers.addShapes("box", "box-shape", boxMesh, { type: SHAPE.BOX });
 
-    bodyOptions[floorMesh.uuid] = { type: TYPE.KINEMATIC };
-    workerHelpers.addBody(floorMesh.uuid, floorMesh, bodyOptions[floorMesh.uuid]);
-    workerHelpers.addShapes(floorMesh.uuid, floorMesh, { type: SHAPE.BOX });
+    bodyOptions["floor"] = { type: TYPE.KINEMATIC };
+    workerHelpers.addBody("floor", floorMesh, bodyOptions["floor"]);
+    workerHelpers.addShapes("floor", "floor-shape", floorMesh, { type: SHAPE.BOX });
 
-    bodyOptions[ballMesh.uuid] = { gravity: { x: 0, y: 0, z: 0 } };
-    workerHelpers.addBody(ballMesh.uuid, ballMesh, bodyOptions[ballMesh.uuid]);
-    workerHelpers.addShapes(ballMesh.uuid, ballMesh, { type: SHAPE.SPHERE });
+    bodyOptions["ball"] = { gravity: { x: 0, y: 0, z: 0 } };
+    workerHelpers.addBody("ball", ballMesh, bodyOptions["ball"]);
+    workerHelpers.addShapes("ball", "ball-shape", ballMesh, { type: SHAPE.SPHERE });
 
-    workerHelpers.addConstraint(ballMesh.uuid, boxMesh.uuid);
+    workerHelpers.addConstraint("constraint", "ball", "box");
 
     // bodyOptions[boxMesh2.uuid] = { type: TYPE.DYNAMIC, gravity: { x: 0, y: -1, z: 0 } };
     // workerHelpers.addBody(boxMesh2, bodyOptions[boxMesh2.uuid]);
     // workerHelpers.addShapes(boxMesh2.uuid, boxMesh2, { type: SHAPE.BOX });
 
     window.setTimeout(() => {
-      const ballOptions = bodyOptions[ballMesh.uuid];
+      const ballOptions = bodyOptions["ball"];
       ballOptions.gravity.y = -9.8;
-      workerHelpers.updateBody(ballMesh.uuid, ballOptions);
+      workerHelpers.updateBody("ball", ballOptions);
 
       window.setInterval(() => {
         if (ballOptions.type === TYPE.DYNAMIC) {
           ballOptions.type = TYPE.KINEMATIC;
-          workerHelpers.updateBody(ballMesh.uuid, ballOptions);
+          workerHelpers.updateBody("ball", ballOptions);
           ballMesh.position.set(0, 2, 0);
         } else {
           ballOptions.type = TYPE.DYNAMIC;
-          workerHelpers.updateBody(ballMesh.uuid, ballOptions);
+          workerHelpers.updateBody("ball", ballOptions);
         }
       }, 2000);
     }, 1000);
@@ -143,7 +153,7 @@ ammoWorker.onmessage = async event => {
 
     // window.setTimeout(() => {
     //   /* remove constraint example */
-    //   workerHelpers.removeConstraint(constraints[ballMesh.uuid]);
+    //   workerHelpers.removeConstraint("constraint");
 
     //   /* remove body example */
     //   workerHelpers.removeBody(boxMesh.uuid);
@@ -157,11 +167,10 @@ ammoWorker.onmessage = async event => {
   } else if (event.data.type === MESSAGE_TYPES.BODY_READY) {
     const uuid = event.data.uuid;
     uuids.push(uuid);
-    indexes[uuid] = event.data.index;
+    uuidToIndex[uuid] = event.data.index;
+    IndexToUuid[event.data.index] = uuid;
   } else if (event.data.type === MESSAGE_TYPES.SHAPES_READY) {
-    shapes[event.data.uuid] = event.data.shapeIds;
-  } else if (event.data.type === MESSAGE_TYPES.CONSTRAINT_READY) {
-    constraints[event.data.bodyUuid] = event.data.constraintId;
+    shapes[event.data.bodyUuid] = event.data.shapesUuid;
   }
 };
 
@@ -181,13 +190,30 @@ const tick = function() {
       const type = bodyOptions[uuid].type ? bodyOptions[uuid].type : TYPE.DYNAMIC;
       const object3D = object3Ds[uuid];
       if (type === TYPE.DYNAMIC) {
-        matrix.fromArray(objectMatricesFloatArray, indexes[uuid] * 16);
+        matrix.fromArray(objectMatricesFloatArray, uuidToIndex[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
         inverse.getInverse(object3D.parent.matrixWorld);
         transform.multiplyMatrices(inverse, matrix);
         transform.decompose(object3D.position, object3D.quaternion, scale);
       } else {
-        objectMatricesFloatArray.set(object3D.matrixWorld.elements, indexes[uuid] * 16);
+        objectMatricesFloatArray.set(object3D.matrixWorld.elements, uuidToIndex[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
       }
+
+      // print velocities
+      // console.log(
+      //   uuid,
+      //   objectMatricesFloatArray[indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE + 16],
+      //   objectMatricesFloatArray[indexes[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE + 17]
+      // );
+
+      // print coliisions
+      // const collisions = [];
+      // for (let j = 18; j < 26; j++) {
+      //   const collidingIndex = objectMatricesIntArray[uuidToIndex[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE + j];
+      //   if (collidingIndex !== -1) {
+      //     collisions.push(IndexToUuid[collidingIndex]);
+      //   }
+      // }
+      // console.log(uuid, collisions);
     }
     Atomics.store(headerIntArray, 0, BUFFER_STATE.CONSUMED);
   }
