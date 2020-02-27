@@ -1,0 +1,24 @@
+body {
+    color: #ffffff;
+    font-family:Monospace;
+    font-size:13px;
+    text-align:center;
+
+    background-color: #000000;
+    margin: 0px;
+    overflow: hidden;
+}
+
+h1 {
+    margin-bottom: 20px;
+}
+
+h4 {
+    margin-bottom: 0px;
+}
+
+#info {
+    position: absolute;
+    top: 0px; width: 100%;
+    padding: 5px;
+}

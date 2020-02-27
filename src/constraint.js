@@ -1,5 +1,6 @@
 /* global Ammo */
-const CONSTRAINT = require("../constants").CONSTRAINT;
+import CONSTANTS from "../constants.js";
+const CONSTRAINT = CONSTANTS.CONSTRAINT;
 const CONSTRAINTS = [
   CONSTRAINT.LOCK,
   CONSTRAINT.FIXED,
@@ -13,7 +14,7 @@ const CONSTRAINTS = [
 /**
  * @return {Ammo.btTypedConstraint}
  */
-function Constraint(constraintConfig, body, targetBody, world) {
+const Constraint = function(constraintConfig, body, targetBody, world) {
   this.physicsConstraint;
 
   this.world = world;
@@ -174,11 +175,10 @@ function Constraint(constraintConfig, body, targetBody, world) {
     }
   }
 
-  Ammo.destroy(bodyTransform);
   Ammo.destroy(targetTransform);
 
   this.world.physicsWorld.addConstraint(this.physicsConstraint, false);
-}
+};
 
 Constraint.prototype.destroy = function() {
   if (!this.physicsConstraint) return;
@@ -188,4 +188,4 @@ Constraint.prototype.destroy = function() {
   this.physicsConstraint = null;
 };
 
-module.exports = Constraint;
+export default Constraint;
