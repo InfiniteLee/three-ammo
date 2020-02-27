@@ -331,6 +331,7 @@ onmessage = async event => {
         const constraintId = event.data.constraintId;
         if (constraints[constraintId]) {
           constraints[constraintId].destroy();
+          delete constraints[constraintId];
         }
         break;
       }
