@@ -33,17 +33,12 @@ const ptrToIndex = {};
 
 const messageQueue = [];
 
-const FOO = new THREE.Matrix4();
-FOO.fromArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-
 let freeIndex = 0;
 const freeIndexArray = new Int32Array(BUFFER_CONFIG.MAX_BODIES);
 for (let i = 0; i < BUFFER_CONFIG.MAX_BODIES - 1; i++) {
   freeIndexArray[i] = i + 1;
 }
 freeIndexArray[BUFFER_CONFIG.MAX_BODIES - 1] = -1;
-
-const tempMatrix = new THREE.Matrix4();
 
 let world, headerIntArray, objectMatricesFloatArray, objectMatricesIntArray, lastTick, getPointer;
 let usingSharedArrayBuffer = false;
@@ -97,6 +92,14 @@ const tick = () => {
       }
     }
 
+    /** Buffer Schema
+     * Every physics body has 26 * 4 bytes (64bit float/int) assigned in the buffer
+     * 0-15:  Matrix4 elements (floats)
+     * 16:    Linear Velocity (float)
+     * 17:    Angular Velocity (float)
+     * 18-25: first 8 Collisions (ints)
+     */
+
     for (let i = 0; i < uuids.length; i++) {
       const uuid = uuids[i];
       const body = bodies[uuid];
@@ -119,13 +122,13 @@ const tick = () => {
 
       const ptr = getPointer(body.physicsBody);
       const collisions = world.collisions.get(ptr);
-      for (let j = 0; j < 8; j++) {
+      for (let j = 18; j < BUFFER_CONFIG.BODY_DATA_SIZE; j++) {
         if (!collisions || j >= collisions.length) {
-          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = -1;
+          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + j] = -1;
         } else {
           const collidingPtr = collisions[j];
           if (ptrToIndex[collidingPtr]) {
-            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = ptrToIndex[collidingPtr];
+            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + j] = ptrToIndex[collidingPtr];
           }
         }
       }
@@ -135,9 +138,9 @@ const tick = () => {
   }
 };
 const initSharedArrayBuffer = sharedArrayBuffer => {
-  /** HEADER SCHEMA
-   * 0: BUFFER STATE
-   * 1: FREE INDEX
+  /** BUFFER HEADER
+   * When using SAB, the first 4 bytes (1 int) are reserved for signaling BUFFER_STATE
+   * This is used to determine which thread is currently allowed to modify the SAB.
    */
   usingSharedArrayBuffer = true;
   headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH);
@@ -221,7 +224,6 @@ function addShapes({ bodyUuid, shapesUuid, vertices, matrices, indexes, matrixWo
     bodies[bodyUuid].addShape(shape);
   }
   shapes[shapesUuid] = physicsShapes;
-  postMessage({ type: MESSAGE_TYPES.SHAPES_READY, bodyUuid, shapesUuid });
 }
 
 function addConstraint({ constraintId, bodyUuid, targetUuid, options }) {
@@ -232,7 +234,6 @@ function addConstraint({ constraintId, bodyUuid, targetUuid, options }) {
     }
     const constraint = new Constraint(options, bodies[bodyUuid], bodies[targetUuid], world);
     constraints[constraintId] = constraint;
-    postMessage({ type: MESSAGE_TYPES.CONSTRAINT_READY, bodyUuid, targetUuid, constraintId });
   }
 }
 
@@ -263,7 +264,7 @@ onmessage = async event => {
       } else if (event.data.arrayBuffer) {
         initTransferrables(event.data.arrayBuffer);
       } else {
-        //TODO error
+        console.error("A valid ArrayBuffer or SharedArrayBuffer is required.");
       }
 
       world = new World(event.data.worldConfig || {});

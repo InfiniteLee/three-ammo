@@ -109,14 +109,17 @@ ammoWorker.onmessage = async event => {
     bodyOptions["box"] = { type: TYPE.DYNAMIC, gravity: { x: 0, y: 0, z: 0 } };
     workerHelpers.addBody("box", boxMesh, bodyOptions["box"]);
     workerHelpers.addShapes("box", "box-shape", boxMesh, { type: SHAPE.BOX });
+    shapes["box"] = "box-shape";
 
     bodyOptions["floor"] = { type: TYPE.KINEMATIC };
     workerHelpers.addBody("floor", floorMesh, bodyOptions["floor"]);
     workerHelpers.addShapes("floor", "floor-shape", floorMesh, { type: SHAPE.BOX });
+    shapes["floor"] = "floor-shape";
 
     bodyOptions["ball"] = { gravity: { x: 0, y: 0, z: 0 } };
     workerHelpers.addBody("ball", ballMesh, bodyOptions["ball"]);
     workerHelpers.addShapes("ball", "ball-shape", ballMesh, { type: SHAPE.SPHERE });
+    shapes["ball"] = "ball-shape";
 
     workerHelpers.addConstraint("constraint", "ball", "box");
 
@@ -169,8 +172,6 @@ ammoWorker.onmessage = async event => {
     uuids.push(uuid);
     uuidToIndex[uuid] = event.data.index;
     IndexToUuid[event.data.index] = uuid;
-  } else if (event.data.type === MESSAGE_TYPES.SHAPES_READY) {
-    shapes[event.data.bodyUuid] = event.data.shapesUuid;
   }
 };
 
