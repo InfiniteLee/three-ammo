@@ -129,13 +129,13 @@ const tick = () => {
 
       const ptr = getPointer(body.physicsBody);
       const collisions = world.collisions.get(ptr);
-      for (let j = 18; j < BUFFER_CONFIG.BODY_DATA_SIZE; j++) {
+      for (let j = 0; j < 8; j++) {
         if (!collisions || j >= collisions.length) {
-          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + j] = -1;
+          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = -1;
         } else {
           const collidingPtr = collisions[j];
           if (ptrToIndex[collidingPtr]) {
-            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + j] = ptrToIndex[collidingPtr];
+            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = ptrToIndex[collidingPtr];
           }
         }
       }
