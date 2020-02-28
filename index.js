@@ -41,6 +41,7 @@ export const WorkerHelpers = function(ammoWorker) {
       iterateGeometries(mesh, options, (vertexArray, matrix, index) => {
         vertices.push(vertexArray);
         matrices.push(matrix);
+        indexes.push(index);
       });
 
       ammoWorker.postMessage({
