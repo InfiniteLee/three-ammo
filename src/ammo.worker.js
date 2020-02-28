@@ -124,8 +124,12 @@ const tick = () => {
 
       objectMatricesFloatArray.set(matrix.elements, index * BUFFER_CONFIG.BODY_DATA_SIZE);
 
-      objectMatricesFloatArray[i * BUFFER_CONFIG.BODY_DATA_SIZE + 16] = body.physicsBody.getLinearVelocity().length();
-      objectMatricesFloatArray[i * BUFFER_CONFIG.BODY_DATA_SIZE + 17] = body.physicsBody.getAngularVelocity().length();
+      objectMatricesFloatArray[
+        index * BUFFER_CONFIG.BODY_DATA_SIZE + 16
+      ] = body.physicsBody.getLinearVelocity().length();
+      objectMatricesFloatArray[
+        index * BUFFER_CONFIG.BODY_DATA_SIZE + 17
+      ] = body.physicsBody.getAngularVelocity().length();
 
       const ptr = getPointer(body.physicsBody);
       const collisions = world.collisions.get(ptr);
