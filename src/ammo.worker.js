@@ -12,16 +12,23 @@ import Constraint from "./constraint";
 import { DefaultBufferSize } from "ammo-debug-drawer";
 
 import { createCollisionShapes } from "three-to-ammo";
-import Ammo from "ammo.js/builds/ammo.wasm.js";
-import AmmoWasm from "ammo.js/builds/ammo.wasm.wasm";
-const AmmoModule = Ammo.bind(undefined, {
-  locateFile(path) {
-    if (path.endsWith(".wasm")) {
-      return new URL(AmmoWasm, location.origin).href;
+
+function initializeWasm(wasmUrl) {
+  const Ammo = require("ammo.js/builds/ammo.wasm.js");
+  return Ammo.bind(undefined, {
+    locateFile(path) {
+      if (path.endsWith(".wasm")) {
+        if (wasmUrl) {
+          return wasmUrl;
+        } else {
+          const AmmoWasm = require("ammo.js/builds/ammo.wasm.wasm");
+          return new URL(AmmoWasm, location.origin).href;
+        }
+      }
+      return path;
     }
-    return path;
-  }
-});
+  });
+}
 
 const uuids = [];
 const bodies = {};
@@ -256,6 +263,8 @@ function activateBody({ uuid }) {
 
 onmessage = async event => {
   if (event.data.type === MESSAGE_TYPES.INIT) {
+    const AmmoModule = initializeWasm(event.data.wasmUrl);
+
     AmmoModule().then(Ammo => {
       getPointer = Ammo.getPointer;
 
