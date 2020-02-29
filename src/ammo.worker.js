@@ -13,15 +13,16 @@ import { DefaultBufferSize } from "ammo-debug-drawer";
 
 import { createCollisionShapes } from "three-to-ammo";
 
+import Ammo from "ammo.js/builds/ammo.wasm.js";
+import AmmoWasm from "ammo.js/builds/ammo.wasm.wasm";
+
 function initializeWasm(wasmUrl) {
-  const Ammo = require("ammo.js/builds/ammo.wasm.js");
   return Ammo.bind(undefined, {
     locateFile(path) {
       if (path.endsWith(".wasm")) {
         if (wasmUrl) {
           return wasmUrl;
         } else {
-          const AmmoWasm = require("ammo.js/builds/ammo.wasm.wasm");
           return new URL(AmmoWasm, location.origin).href;
         }
       }
@@ -40,6 +41,8 @@ const ptrToIndex = {};
 
 const messageQueue = [];
 
+let stepDuration = 0;
+
 let freeIndex = 0;
 const freeIndexArray = new Int32Array(BUFFER_CONFIG.MAX_BODIES);
 for (let i = 0; i < BUFFER_CONFIG.MAX_BODIES - 1; i++) {
@@ -47,7 +50,7 @@ for (let i = 0; i < BUFFER_CONFIG.MAX_BODIES - 1; i++) {
 }
 freeIndexArray[BUFFER_CONFIG.MAX_BODIES - 1] = -1;
 
-let world, headerIntArray, objectMatricesFloatArray, objectMatricesIntArray, lastTick, getPointer;
+let world, headerIntArray, headerFloatArray, objectMatricesFloatArray, objectMatricesIntArray, lastTick, getPointer;
 let usingSharedArrayBuffer = false;
 
 function isBufferConsumed() {
@@ -60,9 +63,12 @@ function isBufferConsumed() {
 
 function releaseBuffer() {
   if (usingSharedArrayBuffer) {
+    headerFloatArray[1] = stepDuration;
     Atomics.store(headerIntArray, 0, BUFFER_STATE.READY);
   } else {
-    postMessage({ type: MESSAGE_TYPES.TRANSFER_DATA, objectMatricesFloatArray }, [objectMatricesFloatArray.buffer]);
+    postMessage({ type: MESSAGE_TYPES.TRANSFER_DATA, objectMatricesFloatArray, stepDuration }, [
+      objectMatricesFloatArray.buffer
+    ]);
   }
 }
 
@@ -71,6 +77,7 @@ const tick = () => {
     const now = performance.now();
     const dt = now - lastTick;
     world.step(dt / 1000);
+    stepDuration = performance.now() - now;
     lastTick = now;
 
     while (messageQueue.length > 0) {
@@ -152,9 +159,11 @@ const initSharedArrayBuffer = sharedArrayBuffer => {
   /** BUFFER HEADER
    * When using SAB, the first 4 bytes (1 int) are reserved for signaling BUFFER_STATE
    * This is used to determine which thread is currently allowed to modify the SAB.
+   * The second 4 bytes (1 float) is used for storing stepDuration for stats.
    */
   usingSharedArrayBuffer = true;
   headerIntArray = new Int32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH);
+  headerFloatArray = new Float32Array(sharedArrayBuffer, 0, BUFFER_CONFIG.HEADER_LENGTH);
   objectMatricesFloatArray = new Float32Array(
     sharedArrayBuffer,
     BUFFER_CONFIG.HEADER_LENGTH * 4,

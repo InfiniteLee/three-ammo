@@ -65,7 +65,7 @@ module.exports = {
     TRANSFER_DATA: 13
   },
   BUFFER_CONFIG: {
-    HEADER_LENGTH: 1,
+    HEADER_LENGTH: 2,
     MAX_BODIES: 10000,
     BODY_DATA_SIZE: 26
   },
