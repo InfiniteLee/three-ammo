@@ -120,7 +120,7 @@ const tick = () => {
       const index = indexes[uuid];
       const matrix = matrices[uuid];
 
-      matrix.fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE);
+      matrix.fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET);
       body.updateShapes();
 
       if (body.type === TYPE.DYNAMIC) {
@@ -129,24 +129,25 @@ const tick = () => {
         body.syncToPhysics(false);
       }
 
-      objectMatricesFloatArray.set(matrix.elements, index * BUFFER_CONFIG.BODY_DATA_SIZE);
+      objectMatricesFloatArray.set(matrix.elements, index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET);
 
       objectMatricesFloatArray[
-        index * BUFFER_CONFIG.BODY_DATA_SIZE + 16
+        index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.LINEAR_VELOCITY_OFFSET
       ] = body.physicsBody.getLinearVelocity().length();
       objectMatricesFloatArray[
-        index * BUFFER_CONFIG.BODY_DATA_SIZE + 17
+        index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.ANGULAR_VELOCITY_OFFSET
       ] = body.physicsBody.getAngularVelocity().length();
 
       const ptr = getPointer(body.physicsBody);
       const collisions = world.collisions.get(ptr);
-      for (let j = 0; j < 8; j++) {
+      for (let j = 0; j < BUFFER_CONFIG.BODY_DATA_SIZE - BUFFER_CONFIG.COLLISIONS_OFFSET; j++) {
         if (!collisions || j >= collisions.length) {
-          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = -1;
+          objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.COLLISIONS_OFFSET + j] = -1;
         } else {
           const collidingPtr = collisions[j];
           if (ptrToIndex[collidingPtr]) {
-            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + 18 + j] = ptrToIndex[collidingPtr];
+            objectMatricesIntArray[index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.COLLISIONS_OFFSET + j] =
+              ptrToIndex[collidingPtr];
           }
         }
       }
