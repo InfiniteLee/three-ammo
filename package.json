@@ -2,7 +2,7 @@
   "name": "three-ammo",
   "version": "1.0.7",
   "description": "A Three.js wrapper for Ammo.js",
-  "homepage": "https://github.com/infinitelee/three-to-ammo",
+  "homepage": "https://github.com/infinitelee/three-ammo",
   "author": "Kevin Lee <kevin@infinite-lee.com>",
   "license": "MPL-2.0",
   "bugs": {
