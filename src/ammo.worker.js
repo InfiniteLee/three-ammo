@@ -44,11 +44,8 @@ const messageQueue = [];
 let stepDuration = 0;
 
 let freeIndex = 0;
-const freeIndexArray = new Int32Array(BUFFER_CONFIG.MAX_BODIES);
-for (let i = 0; i < BUFFER_CONFIG.MAX_BODIES - 1; i++) {
-  freeIndexArray[i] = i + 1;
-}
-freeIndexArray[BUFFER_CONFIG.MAX_BODIES - 1] = -1;
+
+let freeIndexArray;
 
 let world, headerIntArray, headerFloatArray, objectMatricesFloatArray, objectMatricesIntArray, lastTick, getPointer;
 let usingSharedArrayBuffer = false;
@@ -156,7 +153,7 @@ const tick = () => {
     releaseBuffer();
   }
 };
-const initSharedArrayBuffer = sharedArrayBuffer => {
+const initSharedArrayBuffer = (sharedArrayBuffer, maxBodies) => {
   /** BUFFER HEADER
    * When using SAB, the first 4 bytes (1 int) are reserved for signaling BUFFER_STATE
    * This is used to determine which thread is currently allowed to modify the SAB.
@@ -168,12 +165,12 @@ const initSharedArrayBuffer = sharedArrayBuffer => {
   objectMatricesFloatArray = new Float32Array(
     sharedArrayBuffer,
     BUFFER_CONFIG.HEADER_LENGTH * 4,
-    BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+    BUFFER_CONFIG.BODY_DATA_SIZE * maxBodies
   );
   objectMatricesIntArray = new Int32Array(
     sharedArrayBuffer,
     BUFFER_CONFIG.HEADER_LENGTH * 4,
-    BUFFER_CONFIG.BODY_DATA_SIZE * BUFFER_CONFIG.MAX_BODIES
+    BUFFER_CONFIG.BODY_DATA_SIZE * maxBodies
   );
 };
 
@@ -282,8 +279,16 @@ onmessage = async event => {
     AmmoModule().then(Ammo => {
       getPointer = Ammo.getPointer;
 
+      const maxBodies = event.data.maxBodies ? event.data.maxBodies : BUFFER_CONFIG.MAX_BODIES;
+
+      freeIndexArray = new Int32Array(maxBodies);
+      for (let i = 0; i < maxBodies - 1; i++) {
+        freeIndexArray[i] = i + 1;
+      }
+      freeIndexArray[maxBodies - 1] = -1;
+
       if (event.data.sharedArrayBuffer) {
-        initSharedArrayBuffer(event.data.sharedArrayBuffer);
+        initSharedArrayBuffer(event.data.sharedArrayBuffer, maxBodies);
       } else if (event.data.arrayBuffer) {
         initTransferrables(event.data.arrayBuffer);
       } else {
