@@ -72,6 +72,8 @@ function releaseBuffer() {
 }
 
 const tick = () => {
+  setTimeout(tick, simulationRate);
+
   if (isBufferConsumed()) {
     const now = performance.now();
     const dt = now - lastTick;
@@ -154,8 +156,6 @@ const tick = () => {
 
     releaseBuffer();
   }
-
-  setTimeout(tick, simulationRate - stepDuration);
 };
 const initSharedArrayBuffer = (sharedArrayBuffer, maxBodies) => {
   /** BUFFER HEADER
@@ -306,6 +306,9 @@ onmessage = async event => {
       postMessage({ type: MESSAGE_TYPES.READY });
     });
   } else if (event.data.type === MESSAGE_TYPES.TRANSFER_DATA) {
+    if (event.data.simulationRate !== undefined) {
+      simulationRate = event.data.simulationRate;
+    }
     objectMatricesFloatArray = event.data.objectMatricesFloatArray;
     objectMatricesIntArray = new Int32Array(objectMatricesFloatArray.buffer);
   } else if (world) {
