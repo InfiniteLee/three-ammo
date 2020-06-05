@@ -72,13 +72,21 @@ function releaseBuffer() {
 }
 
 const tick = () => {
-  if (isBufferConsumed()) {
+  const bufferConsumed = isBufferConsumed();
+
+  if (bufferConsumed) {
     const now = performance.now();
     const dt = now - lastTick;
     world.step(dt / 1000);
     stepDuration = performance.now() - now;
     lastTick = now;
+  } else {
+    stepDuration = 0;
+  }
 
+  setTimeout(tick, simulationRate - stepDuration);
+
+  if (bufferConsumed) {
     while (messageQueue.length > 0) {
       const message = messageQueue.shift();
       switch (message.type) {
@@ -154,8 +162,6 @@ const tick = () => {
 
     releaseBuffer();
   }
-
-  setTimeout(tick, simulationRate - stepDuration);
 };
 const initSharedArrayBuffer = (sharedArrayBuffer, maxBodies) => {
   /** BUFFER HEADER
