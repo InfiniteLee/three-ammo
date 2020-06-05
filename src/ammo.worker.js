@@ -302,7 +302,7 @@ onmessage = async event => {
       world = new World(event.data.worldConfig || {});
       lastTick = performance.now();
       simulationRate = event.data.simulationRate === undefined ? CONSTANTS.SIMULATION_RATE : event.data.simulationRate;
-      self.setInterval(tick, simulationRate);
+      self.setTimeout(tick, simulationRate);
       postMessage({ type: MESSAGE_TYPES.READY });
     });
   } else if (event.data.type === MESSAGE_TYPES.TRANSFER_DATA) {
