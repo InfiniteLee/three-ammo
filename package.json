@@ -1,6 +1,6 @@
 {
   "name": "three-ammo",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "A Three.js wrapper for Ammo.js",
   "homepage": "https://github.com/infinitelee/three-ammo",
   "author": "Kevin Lee <kevin@infinite-lee.com>",
