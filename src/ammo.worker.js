@@ -72,22 +72,15 @@ function releaseBuffer() {
 }
 
 const tick = () => {
-  const bufferConsumed = isBufferConsumed();
+  setTimeout(tick, simulationRate);
 
-  let stepTimeout = simulationRate;
-
-  if (bufferConsumed) {
+  if (isBufferConsumed()) {
     const now = performance.now();
     const dt = now - lastTick;
     world.step(dt / 1000);
     stepDuration = performance.now() - now;
-    stepTimeout = simulationRate - stepDuration;
     lastTick = now;
-  }
 
-  setTimeout(tick, stepTimeout);
-
-  if (bufferConsumed) {
     while (messageQueue.length > 0) {
       const message = messageQueue.shift();
       switch (message.type) {
