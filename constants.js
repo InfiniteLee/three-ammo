@@ -2,6 +2,7 @@ module.exports = {
   GRAVITY: -9.8,
   MAX_INTERVAL: 4 / 60,
   ITERATIONS: 10,
+  SIMULATION_RATE: 8.333, // 8.333ms / 120hz
   ACTIVATION_STATE: {
     ACTIVE_TAG: "active",
     ISLAND_SLEEPING: "islandSleeping",
