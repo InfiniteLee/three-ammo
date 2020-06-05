@@ -41,6 +41,8 @@ const ptrToIndex = {};
 
 const messageQueue = [];
 
+let simulationRate;
+
 let stepDuration = 0;
 
 let freeIndex = 0;
@@ -152,6 +154,8 @@ const tick = () => {
 
     releaseBuffer();
   }
+
+  setTimeout(tick, simulationRate - stepDuration);
 };
 const initSharedArrayBuffer = (sharedArrayBuffer, maxBodies) => {
   /** BUFFER HEADER
@@ -297,7 +301,8 @@ onmessage = async event => {
 
       world = new World(event.data.worldConfig || {});
       lastTick = performance.now();
-      self.setInterval(tick, 0);
+      simulationRate = event.data.simulationRate === undefined ? CONSTANTS.SIMULATION_RATE : event.data.simulationRate;
+      self.setTimeout(tick, simulationRate);
       postMessage({ type: MESSAGE_TYPES.READY });
     });
   } else if (event.data.type === MESSAGE_TYPES.TRANSFER_DATA) {
