@@ -81,22 +81,22 @@ World.prototype.step = function(deltaTime) {
   const numManifolds = this.dispatcher.getNumManifolds();
   for (let i = 0; i < numManifolds; i++) {
     const persistentManifold = this.dispatcher.getManifoldByIndexInternal(i);
-    const numContacts = persistentManifold.getNumContacts();
     const body0ptr = Ammo.getPointer(persistentManifold.getBody0());
     const body1ptr = Ammo.getPointer(persistentManifold.getBody1());
-
-    for (let j = 0; j < numContacts; j++) {
-      const manifoldPoint = persistentManifold.getContactPoint(j);
-      const distance = manifoldPoint.getDistance();
-      if (distance <= this.epsilon) {
-        if (!this.collisions.has(body0ptr)) {
-          this.collisions.set(body0ptr, []);
-          this.collisionKeys.push(body0ptr);
-        }
-        if (this.collisions.get(body0ptr).indexOf(body1ptr) === -1) {
-          this.collisions.get(body0ptr).push(body1ptr);
-        }
-        break;
+    if(persistentManifold.getNumContacts()) {
+      if (!this.collisions.has(body0ptr)) {
+        this.collisions.set(body0ptr, []);
+        this.collisionKeys.push(body0ptr);
+      }
+      if (!this.collisions.has(body1ptr)) {
+        this.collisions.set(body1ptr, []);
+        this.collisionKeys.push(body1ptr);
+      }
+      if (this.collisions.get(body0ptr).indexOf(body1ptr) === -1) {
+        this.collisions.get(body0ptr).push(body1ptr);
+      }
+      if (this.collisions.get(body1ptr).indexOf(body0ptr) === -1) {
+        this.collisions.get(body1ptr).push(body0ptr);
       }
     }
   }
