@@ -47,7 +47,6 @@ function almostEqualsQuaternion(epsilon, u, v) {
  * parsing the elements geometry.
  */
 function Body(bodyConfig, matrix, world) {
-  this.loadedEvent = bodyConfig.loadedEvent ? bodyConfig.loadedEvent : "";
   this.mass = bodyConfig.hasOwnProperty("mass") ? bodyConfig.mass : 1;
   const worldGravity = world.physicsWorld.getGravity();
   this.gravity = new Ammo.btVector3(worldGravity.x(), worldGravity.y(), worldGravity.z());
