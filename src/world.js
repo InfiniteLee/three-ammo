@@ -59,8 +59,9 @@ World.prototype.removeBody = function(body) {
   const bodyptr = Ammo.getPointer(body);
   this.object3Ds.delete(bodyptr);
   this.collisions.delete(bodyptr);
-  if (this.collisionKeys.indexOf(bodyptr) !== -1) {
-    this.collisionKeys.splice(this.collisionKeys.indexOf(bodyptr), 1);
+  const idx = this.collisionKeys.indexOf(bodyptr);
+  if (idx !== -1) {
+    this.collisionKeys.splice(idx, 1);
   }
 };
 
