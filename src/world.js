@@ -59,8 +59,9 @@ World.prototype.removeBody = function(body) {
   const bodyptr = Ammo.getPointer(body);
   this.object3Ds.delete(bodyptr);
   this.collisions.delete(bodyptr);
-  if (this.collisionKeys.indexOf(bodyptr) !== -1) {
-    this.collisionKeys.splice(this.collisionKeys.indexOf(bodyptr), 1);
+  const idx = this.collisionKeys.indexOf(bodyptr);
+  if (idx !== -1) {
+    this.collisionKeys.splice(idx, 1);
   }
 };
 
@@ -95,6 +96,13 @@ World.prototype.step = function(deltaTime) {
         }
         if (this.collisions.get(body0ptr).indexOf(body1ptr) === -1) {
           this.collisions.get(body0ptr).push(body1ptr);
+        }
+        if (!this.collisions.has(body1ptr)) {
+          this.collisions.set(body1ptr, []);
+          this.collisionKeys.push(body1ptr);
+        }
+        if (this.collisions.get(body1ptr).indexOf(body0ptr) === -1) {
+          this.collisions.get(body1ptr).push(body0ptr);
         }
         break;
       }
