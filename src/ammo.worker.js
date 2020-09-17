@@ -75,12 +75,6 @@ const tick = () => {
   setTimeout(tick, simulationRate);
 
   if (isBufferConsumed()) {
-    const now = performance.now();
-    const dt = now - lastTick;
-    world.step(dt / 1000);
-    stepDuration = performance.now() - now;
-    lastTick = now;
-
     while (messageQueue.length > 0) {
       const message = messageQueue.shift();
       switch (message.type) {
@@ -106,6 +100,12 @@ const tick = () => {
           activateBody(message);
       }
     }
+
+    const now = performance.now();
+    const dt = now - lastTick;
+    world.step(dt / 1000);
+    stepDuration = performance.now() - now;
+    lastTick = now;
 
     /** Buffer Schema
      * Every physics body has 26 * 4 bytes (64bit float/int) assigned in the buffer
