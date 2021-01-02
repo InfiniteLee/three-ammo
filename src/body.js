@@ -80,6 +80,7 @@ function Body(bodyConfig, matrix, world) {
   this.matrix = matrix;
   this.world = world;
   this.shapes = [];
+  this.initialSyncCount = 0;
 
   this._initBody();
 }
