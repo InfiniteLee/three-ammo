@@ -138,7 +138,7 @@ const tick = () => {
 
       if (isDynamic) {
         if (body.initialSyncCount === 1) {
-          // Initial transform now set by hots process for body which starts as dynamic. Initialize the body.
+          // Initial transform now set by host process for body which starts as dynamic. Initialize the body.
           resetDynamicBody({ uuid });
         } else {
           // Dynamic body is now active and initialized, let physics engine drive its behavior.
