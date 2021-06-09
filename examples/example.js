@@ -53,8 +53,8 @@ scene.add(boxMesh);
 const debugVertices = new Float32Array(DefaultBufferSize);
 const debugColors = new Float32Array(DefaultBufferSize);
 const debugGeometry = new THREE.BufferGeometry();
-debugGeometry.addAttribute("position", new THREE.BufferAttribute(debugVertices, 3).setDynamic(true));
-debugGeometry.addAttribute("color", new THREE.BufferAttribute(debugColors, 3).setDynamic(true));
+debugGeometry.setAttribute("position", new THREE.BufferAttribute(debugVertices, 3).setUsage(THREE.DynamicDrawUsage));
+debugGeometry.setAttribute("color", new THREE.BufferAttribute(debugColors, 3).setUsage(THREE.DynamicDrawUsage));
 const debugMaterial = new THREE.LineBasicMaterial({ vertexColors: THREE.VertexColors });
 const debugMesh = new THREE.LineSegments(debugGeometry, debugMaterial);
 debugMesh.frustumCulled = false;
@@ -158,7 +158,7 @@ AmmoModule().then(Ammo => {
       const mesh = meshes[uuid];
       if (body.type === TYPE.DYNAMIC) {
         body.syncFromPhysics();
-        inverse.getInverse(mesh.parent.matrixWorld);
+        inverse.copy(mesh.parent.matrixWorld).invert();
         transform.multiplyMatrices(inverse, meshMatrices[uuid]);
         transform.decompose(mesh.position, mesh.quaternion, scale);
       }

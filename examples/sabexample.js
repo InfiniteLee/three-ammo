@@ -86,8 +86,8 @@ const debugIndex = new Uint32Array(debugSharedArrayBuffer, 0, 4);
 const debugVertices = new Float32Array(debugSharedArrayBuffer, 4, DefaultBufferSize);
 const debugColors = new Float32Array(debugSharedArrayBuffer, 4 + DefaultBufferSize, DefaultBufferSize);
 const debugGeometry = new THREE.BufferGeometry();
-debugGeometry.addAttribute("position", new THREE.BufferAttribute(debugVertices, 3).setDynamic(true));
-debugGeometry.addAttribute("color", new THREE.BufferAttribute(debugColors, 3).setDynamic(true));
+debugGeometry.setAttribute("position", new THREE.BufferAttribute(debugVertices, 3).setUsage(THREE.DynamicDrawUsage));
+debugGeometry.setAttribute("color", new THREE.BufferAttribute(debugColors, 3).setUsage(THREE.DynamicDrawUsage));
 const debugMaterial = new THREE.LineBasicMaterial({
   vertexColors: THREE.VertexColors,
   depthTest: true
@@ -192,7 +192,7 @@ const tick = function() {
       const object3D = object3Ds[uuid];
       if (type === TYPE.DYNAMIC) {
         matrix.fromArray(objectMatricesFloatArray, uuidToIndex[uuid] * BUFFER_CONFIG.BODY_DATA_SIZE);
-        inverse.getInverse(object3D.parent.matrixWorld);
+        inverse.copy(object3D.parent.matrixWorld).invert();
         transform.multiplyMatrices(inverse, matrix);
         transform.decompose(object3D.position, object3D.quaternion, scale);
       } else {
