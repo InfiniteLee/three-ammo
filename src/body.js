@@ -47,7 +47,6 @@ function almostEqualsQuaternion(epsilon, u, v) {
  * parsing the elements geometry.
  */
 function Body(bodyConfig, matrix, world) {
-  this.loadedEvent = bodyConfig.loadedEvent ? bodyConfig.loadedEvent : "";
   this.mass = bodyConfig.hasOwnProperty("mass") ? bodyConfig.mass : 1;
   const worldGravity = world.physicsWorld.getGravity();
   this.gravity = new Ammo.btVector3(worldGravity.x(), worldGravity.y(), worldGravity.z());
@@ -71,7 +70,6 @@ function Body(bodyConfig, matrix, world) {
       ? bodyConfig.activationState
       : ACTIVATION_STATE.ACTIVE_TAG;
   this.type = bodyConfig.type ? bodyConfig.type : TYPE.DYNAMIC;
-  this.emitCollisionEvents = bodyConfig.hasOwnProperty("emitCollisionEvents") ? bodyConfig.emitCollisionEvents : false;
   this.disableCollision = bodyConfig.hasOwnProperty("disableCollision") ? bodyConfig.disableCollision : false;
   this.collisionFilterGroup = bodyConfig.hasOwnProperty("collisionFilterGroup") ? bodyConfig.collisionFilterGroup : 1; //32-bit mask
   this.collisionFilterMask = bodyConfig.hasOwnProperty("collisionFilterMask") ? bodyConfig.collisionFilterMask : 1; //32-bit mask
@@ -138,10 +136,6 @@ Body.prototype._initBody = (function() {
     this.updateCollisionFlags();
 
     this.world.addBody(this.physicsBody, this.matrix, this.collisionFilterGroup, this.collisionFilterMask);
-
-    if (this.emitCollisionEvents) {
-      this.world.addEventListener(this.physicsBody);
-    }
   };
 })();
 
