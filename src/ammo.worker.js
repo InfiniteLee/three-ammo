@@ -120,14 +120,39 @@ const tick = () => {
       const body = bodies[uuid];
       const index = indexes[uuid];
       const matrix = matrices[uuid];
+      const isDynamic = body.type === TYPE.DYNAMIC;
 
-      matrix.fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET);
+      // Only need to track first three syncs to deal with dynamic bodies which start out as such.
+      const isTrackingInitialSyncs = body.initialSyncCount < 2;
+
       body.updateShapes();
 
-      if (body.type === TYPE.DYNAMIC) {
-        body.syncFromPhysics();
+      // If body starts out as dynamic (ie its initial sync count is zero but it is marked as dynamic)
+      // wait a tick so host process can set its initial transform before physics starts driving it.
+      if (isTrackingInitialSyncs && isDynamic && body.initialSyncCount === 0) {
+        body.initialSyncCount++;
+        continue;
+      }
+
+      matrix.fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET);
+
+      if (isDynamic) {
+        if (body.initialSyncCount === 1) {
+          // Initial transform now set by host process for body which starts as dynamic. Initialize the body.
+          resetDynamicBody({ uuid });
+        } else {
+          // Dynamic body is now active and initialized, let physics engine drive its behavior.
+          body.syncFromPhysics();
+        }
       } else {
         body.syncToPhysics(false);
+      }
+
+      // Skip the work of incrementing the initialSyncCount unless we're still in the first 3 syncs.
+      //
+      // (Otherwise we don't care about it, since its only needed to initialize dynamic bodies that begin as such.)
+      if (isTrackingInitialSyncs) {
+        body.initialSyncCount++;
       }
 
       objectMatricesFloatArray.set(matrix.elements, index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET);
@@ -263,7 +288,10 @@ function resetDynamicBody({ uuid }) {
   if (bodies[uuid]) {
     const body = bodies[uuid];
     const index = indexes[uuid];
-    matrices[uuid].fromArray(objectMatricesFloatArray, index * BUFFER_CONFIG.BODY_DATA_SIZE);
+    matrices[uuid].fromArray(
+      objectMatricesFloatArray,
+      index * BUFFER_CONFIG.BODY_DATA_SIZE + BUFFER_CONFIG.MATRIX_OFFSET
+    );
     body.syncToPhysics(true);
     body.physicsBody.getLinearVelocity().setValue(0, 0, 0);
     body.physicsBody.getAngularVelocity().setValue(0, 0, 0);
