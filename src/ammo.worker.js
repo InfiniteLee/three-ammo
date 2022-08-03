@@ -96,14 +96,46 @@ const tick = () => {
         case MESSAGE_TYPES.ADD_SHAPES:
           addShapes(message);
           break;
+        case MESSAGE_TYPES.REMOVE_SHAPES:
+          const bodyUuid = message.data.bodyUuid;
+          const shapesUuid = message.data.shapesUuid;
+          if (bodies[bodyUuid] && shapes[shapesUuid]) {
+            for (let i = 0; i < shapes[shapesUuid].length; i++) {
+              const shape = shapes[shapesUuid][i];
+              bodies[bodyUuid].removeShape(shape);
+            }
+          }
+          break;
         case MESSAGE_TYPES.ADD_CONSTRAINT:
           addConstraint(message);
+          break;
+        case MESSAGE_TYPES.REMOVE_CONSTRAINT:
+          const constraintId = message.data.constraintId;
+          if (constraints[constraintId]) {
+            constraints[constraintId].destroy();
+            delete constraints[constraintId];
+          }
+          break;
+        case MESSAGE_TYPES.ENABLE_DEBUG:
+          const enable = message.data.enable;
+          if (!world.debugDrawer) {
+            initDebug(message.data.debugSharedArrayBuffer, world);
+          }
+
+          if (world.debugDrawer) {
+            if (enable) {
+              world.debugDrawer.enable();
+            } else {
+              world.debugDrawer.disable();
+            }
+          }
           break;
         case MESSAGE_TYPES.RESET_DYNAMIC_BODY:
           resetDynamicBody(message);
           break;
         case MESSAGE_TYPES.ACTIVATE_BODY:
           activateBody(message);
+          break;
       }
     }
 
@@ -311,95 +343,7 @@ onmessage = async event => {
     }
     objectMatricesFloatArray = event.data.objectMatricesFloatArray;
     objectMatricesIntArray = new Int32Array(objectMatricesFloatArray.buffer);
-  } else if (world) {
-    switch (event.data.type) {
-      case MESSAGE_TYPES.ADD_BODY: {
-        messageQueue.push(event.data);
-        break;
-      }
-
-      case MESSAGE_TYPES.UPDATE_BODY: {
-        messageQueue.push(event.data);
-        break;
-      }
-
-      case MESSAGE_TYPES.REMOVE_BODY: {
-        const uuid = event.data.uuid;
-        if (uuids.indexOf(uuid) !== -1) {
-          messageQueue.push(event.data);
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.ADD_SHAPES: {
-        const bodyUuid = event.data.bodyUuid;
-        if (bodies[bodyUuid]) {
-          addShapes(event.data);
-        } else {
-          messageQueue.push(event.data);
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.REMOVE_SHAPES: {
-        const bodyUuid = event.data.bodyUuid;
-        const shapesUuid = event.data.shapesUuid;
-        if (bodies[bodyUuid] && shapes[shapesUuid]) {
-          for (let i = 0; i < shapes[shapesUuid].length; i++) {
-            const shape = shapes[shapesUuid][i];
-            bodies[bodyUuid].removeShape(shape);
-          }
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.ADD_CONSTRAINT: {
-        const bodyUuid = event.data.bodyUuid;
-        const targetUuid = event.data.targetUuid;
-        if (bodies[bodyUuid] && bodies[targetUuid]) {
-          addConstraint(event.data);
-        } else {
-          messageQueue.push(event.data);
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.REMOVE_CONSTRAINT: {
-        const constraintId = event.data.constraintId;
-        if (constraints[constraintId]) {
-          constraints[constraintId].destroy();
-          delete constraints[constraintId];
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.ENABLE_DEBUG: {
-        const enable = event.data.enable;
-        if (!world.debugDrawer) {
-          initDebug(event.data.debugSharedArrayBuffer, world);
-        }
-
-        if (world.debugDrawer) {
-          if (enable) {
-            world.debugDrawer.enable();
-          } else {
-            world.debugDrawer.disable();
-          }
-        }
-        break;
-      }
-
-      case MESSAGE_TYPES.RESET_DYNAMIC_BODY: {
-        messageQueue.push(event.data);
-        break;
-      }
-
-      case MESSAGE_TYPES.ACTIVATE_BODY: {
-        messageQueue.push(event.data);
-        break;
-      }
-    }
   } else {
-    console.error("Error: World Not Initialized", event.data);
+    messageQueue.push(event.data);
   }
 };
